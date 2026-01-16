@@ -39,34 +39,34 @@ private:
   std::vector<uint8_t> grid_map_; // state_id -> cost
 };
 
-class PancakeEnvironment {
+// class PancakeEnvironment {
 
-public:
+// public:
 
-  void get_successors(uint32_t node_index, std::vector<uint32_t>& neighbors);
-  uint32_t get_heuristic(uint32_t node_index);
-  bool is_goal(uint32_t node_index);
+//   void get_successors(uint32_t node_index, std::vector<uint32_t>& neighbors);
+//   uint32_t get_heuristic(uint32_t node_index);
+//   bool is_goal(uint32_t node_index);
 
-  uint32_t get_start_node();
+//   uint32_t get_start_node();
 
-  NodePool& pool;
+//   NodePool& pool;
 
-  std::vector<std::array<uint8_t, 48>> node_states; 
+//   std::vector<std::array<uint8_t, 48>> node_states; 
 
-};
+// };
 
-class SlidingTileEnvironment {
+// class SlidingTileEnvironment {
 
-public:
+// public:
 
-  void get_successors(uint32_t node_index, std::vector<uint32_t>& neighbors);
-  uint32_t get_heuristic(uint32_t node_index);
-  bool is_goal(uint32_t node_index);
+//   void get_successors(uint32_t node_index, std::vector<uint32_t>& neighbors);
+//   uint32_t get_heuristic(uint32_t node_index);
+//   bool is_goal(uint32_t node_index);
 
-  uint32_t get_start_node();
+//   uint32_t get_start_node();
 
-  NodePool& pool;
+//   NodePool& pool;
 
-  std::vector<uint64_t> node_states; 
+//   std::vector<uint64_t> node_states; 
 
-};
+// };

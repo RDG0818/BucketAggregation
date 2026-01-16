@@ -4,6 +4,10 @@
 
 ## Prerequisites
 
+```bash
+git submodule update --init --recursive
+```
+
 ## Installation
 
 ## Future Work
