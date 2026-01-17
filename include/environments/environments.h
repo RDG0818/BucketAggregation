@@ -1,7 +1,10 @@
+// include/environments/environments.h
+
 #pragma once
 
 #include <array>
 #include <random>
+#include <unordered_map>
 
 #include "node.h"
 
@@ -27,6 +30,11 @@ public:
 
   uint8_t get_cell_cost(uint32_t state_id) const { return grid_map_[state_id]; }
 
+  uint32_t get_state_id(uint32_t node_handle) const { return node_states_[node_handle]; }
+  uint32_t get_node_handle(uint32_t state_id) const { return lookup_table_[state_id]; }
+  NodePool& get_pool() { return pool_; }
+  const NodePool& get_pool() const { return pool_; }
+
 private:
 
   uint32_t w_;
@@ -39,21 +47,56 @@ private:
   std::vector<uint8_t> grid_map_; // state_id -> cost
 };
 
-// class PancakeEnvironment {
+class PancakeEnvironment {
 
-// public:
+public:
 
-//   void get_successors(uint32_t node_index, std::vector<uint32_t>& neighbors);
-//   uint32_t get_heuristic(uint32_t node_index);
-//   bool is_goal(uint32_t node_index);
+  using T = std::array<uint8_t, 48>;
 
-//   uint32_t get_start_node();
+  // FNV-1a Hash
+  struct StateHash {
+    uint32_t operator()(const T& s) const {
+      uint32_t hash = 2166136261u;
+      for (uint8_t val : s) {
+        hash ^= val;
+        hash *= 16777619u;
+      }
+      return hash;
+    }
+  };
 
-//   NodePool& pool;
+  PancakeEnvironment(uint32_t seed = 42, uint32_t capacity = 1e7);
 
-//   std::vector<std::array<uint8_t, 48>> node_states; 
+  void get_successors(uint32_t node_index, std::vector<uint32_t>& neighbors);
+  uint32_t get_heuristic(const T& state) const;
+  bool is_goal(const T& state) const { return state == goal_state_; };
 
-// };
+  uint32_t get_start_node();
+
+  T get_state(uint32_t node_handle) const { return node_states_[node_handle]; }
+  uint32_t get_node_handle(const T& state) const { 
+    auto it = lookup_table_.find(state);
+    if (it != lookup_table_.end()) {
+      return it->second;
+    }
+    return NODE_NULL;
+  }
+
+  NodePool& get_pool() { return pool_; }
+  const NodePool& get_pool() const { return pool_; }
+
+private:
+
+  uint32_t capacity_;
+  NodePool pool_;
+
+  std::vector<T> node_states_; // node_handle -> state_id
+  std::unordered_map<T, uint32_t, StateHash> lookup_table_;
+
+  T start_state_;
+  T goal_state_;
+
+};
 
 // class SlidingTileEnvironment {
 

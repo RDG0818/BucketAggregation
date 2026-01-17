@@ -65,6 +65,16 @@ CMAKE_BINARY_DIR = /home/ryan/BucketHeap/build
 #=============================================================================
 # Targets provided globally by CMake.
 
+# Special rule for the target test
+test:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running tests..."
+	/usr/bin/ctest --force-new-ctest-process $(ARGS)
+.PHONY : test
+
+# Special rule for the target test
+test/fast: test
+.PHONY : test/fast
+
 # Special rule for the target edit_cache
 edit_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "No interactive CMake dialog available..."
@@ -84,6 +94,51 @@ rebuild_cache:
 # Special rule for the target rebuild_cache
 rebuild_cache/fast: rebuild_cache
 .PHONY : rebuild_cache/fast
+
+# Special rule for the target list_install_components
+list_install_components:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Available install components are: \"gmock\" \"gtest\""
+.PHONY : list_install_components
+
+# Special rule for the target list_install_components
+list_install_components/fast: list_install_components
+.PHONY : list_install_components/fast
+
+# Special rule for the target install
+install: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Install the project..."
+	/usr/bin/cmake -P cmake_install.cmake
+.PHONY : install
+
+# Special rule for the target install
+install/fast: preinstall/fast
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Install the project..."
+	/usr/bin/cmake -P cmake_install.cmake
+.PHONY : install/fast
+
+# Special rule for the target install/local
+install/local: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Installing only the local directory..."
+	/usr/bin/cmake -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
+.PHONY : install/local
+
+# Special rule for the target install/local
+install/local/fast: preinstall/fast
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Installing only the local directory..."
+	/usr/bin/cmake -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
+.PHONY : install/local/fast
+
+# Special rule for the target install/strip
+install/strip: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Installing the project stripped..."
+	/usr/bin/cmake -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
+.PHONY : install/strip
+
+# Special rule for the target install/strip
+install/strip/fast: preinstall/fast
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Installing the project stripped..."
+	/usr/bin/cmake -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
+.PHONY : install/strip/fast
 
 # The main all target
 all: cmake_check_build_system
@@ -117,24 +172,126 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named BucketHeap
+# Target rules for targets named core_lib
 
 # Build rule for target.
-BucketHeap: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 BucketHeap
-.PHONY : BucketHeap
+core_lib: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 core_lib
+.PHONY : core_lib
 
 # fast build rule for target.
-BucketHeap/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/BucketHeap.dir/build.make CMakeFiles/BucketHeap.dir/build
-.PHONY : BucketHeap/fast
+core_lib/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/build
+.PHONY : core_lib/fast
+
+#=============================================================================
+# Target rules for targets named main
+
+# Build rule for target.
+main: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 main
+.PHONY : main
+
+# fast build rule for target.
+main/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/build
+.PHONY : main/fast
+
+#=============================================================================
+# Target rules for targets named tests
+
+# Build rule for target.
+tests: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 tests
+.PHONY : tests
+
+# fast build rule for target.
+tests/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/build
+.PHONY : tests/fast
+
+#=============================================================================
+# Target rules for targets named gmock
+
+# Build rule for target.
+gmock: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 gmock
+.PHONY : gmock
+
+# fast build rule for target.
+gmock/fast:
+	$(MAKE) $(MAKESILENT) -f googletest/googlemock/CMakeFiles/gmock.dir/build.make googletest/googlemock/CMakeFiles/gmock.dir/build
+.PHONY : gmock/fast
+
+#=============================================================================
+# Target rules for targets named gmock_main
+
+# Build rule for target.
+gmock_main: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 gmock_main
+.PHONY : gmock_main
+
+# fast build rule for target.
+gmock_main/fast:
+	$(MAKE) $(MAKESILENT) -f googletest/googlemock/CMakeFiles/gmock_main.dir/build.make googletest/googlemock/CMakeFiles/gmock_main.dir/build
+.PHONY : gmock_main/fast
+
+#=============================================================================
+# Target rules for targets named gtest
+
+# Build rule for target.
+gtest: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 gtest
+.PHONY : gtest
+
+# fast build rule for target.
+gtest/fast:
+	$(MAKE) $(MAKESILENT) -f googletest/googletest/CMakeFiles/gtest.dir/build.make googletest/googletest/CMakeFiles/gtest.dir/build
+.PHONY : gtest/fast
+
+#=============================================================================
+# Target rules for targets named gtest_main
+
+# Build rule for target.
+gtest_main: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 gtest_main
+.PHONY : gtest_main
+
+# fast build rule for target.
+gtest_main/fast:
+	$(MAKE) $(MAKESILENT) -f googletest/googletest/CMakeFiles/gtest_main.dir/build.make googletest/googletest/CMakeFiles/gtest_main.dir/build
+.PHONY : gtest_main/fast
+
+src/grid_environment.o: src/grid_environment.cpp.o
+.PHONY : src/grid_environment.o
+
+# target to build an object file
+src/grid_environment.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/grid_environment.cpp.o
+.PHONY : src/grid_environment.cpp.o
+
+src/grid_environment.i: src/grid_environment.cpp.i
+.PHONY : src/grid_environment.i
+
+# target to preprocess a source file
+src/grid_environment.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/grid_environment.cpp.i
+.PHONY : src/grid_environment.cpp.i
+
+src/grid_environment.s: src/grid_environment.cpp.s
+.PHONY : src/grid_environment.s
+
+# target to generate assembly for a file
+src/grid_environment.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/grid_environment.cpp.s
+.PHONY : src/grid_environment.cpp.s
 
 src/main.o: src/main.cpp.o
 .PHONY : src/main.o
 
 # target to build an object file
 src/main.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/BucketHeap.dir/build.make CMakeFiles/BucketHeap.dir/src/main.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/src/main.cpp.o
 .PHONY : src/main.cpp.o
 
 src/main.i: src/main.cpp.i
@@ -142,7 +299,7 @@ src/main.i: src/main.cpp.i
 
 # target to preprocess a source file
 src/main.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/BucketHeap.dir/build.make CMakeFiles/BucketHeap.dir/src/main.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/src/main.cpp.i
 .PHONY : src/main.cpp.i
 
 src/main.s: src/main.cpp.s
@@ -150,8 +307,80 @@ src/main.s: src/main.cpp.s
 
 # target to generate assembly for a file
 src/main.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/BucketHeap.dir/build.make CMakeFiles/BucketHeap.dir/src/main.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/src/main.cpp.s
 .PHONY : src/main.cpp.s
+
+src/pancake_environment.o: src/pancake_environment.cpp.o
+.PHONY : src/pancake_environment.o
+
+# target to build an object file
+src/pancake_environment.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/pancake_environment.cpp.o
+.PHONY : src/pancake_environment.cpp.o
+
+src/pancake_environment.i: src/pancake_environment.cpp.i
+.PHONY : src/pancake_environment.i
+
+# target to preprocess a source file
+src/pancake_environment.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/pancake_environment.cpp.i
+.PHONY : src/pancake_environment.cpp.i
+
+src/pancake_environment.s: src/pancake_environment.cpp.s
+.PHONY : src/pancake_environment.s
+
+# target to generate assembly for a file
+src/pancake_environment.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/pancake_environment.cpp.s
+.PHONY : src/pancake_environment.cpp.s
+
+tests/test_grid_environment.o: tests/test_grid_environment.cpp.o
+.PHONY : tests/test_grid_environment.o
+
+# target to build an object file
+tests/test_grid_environment.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_grid_environment.cpp.o
+.PHONY : tests/test_grid_environment.cpp.o
+
+tests/test_grid_environment.i: tests/test_grid_environment.cpp.i
+.PHONY : tests/test_grid_environment.i
+
+# target to preprocess a source file
+tests/test_grid_environment.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_grid_environment.cpp.i
+.PHONY : tests/test_grid_environment.cpp.i
+
+tests/test_grid_environment.s: tests/test_grid_environment.cpp.s
+.PHONY : tests/test_grid_environment.s
+
+# target to generate assembly for a file
+tests/test_grid_environment.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_grid_environment.cpp.s
+.PHONY : tests/test_grid_environment.cpp.s
+
+tests/test_pancake_environment.o: tests/test_pancake_environment.cpp.o
+.PHONY : tests/test_pancake_environment.o
+
+# target to build an object file
+tests/test_pancake_environment.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_pancake_environment.cpp.o
+.PHONY : tests/test_pancake_environment.cpp.o
+
+tests/test_pancake_environment.i: tests/test_pancake_environment.cpp.i
+.PHONY : tests/test_pancake_environment.i
+
+# target to preprocess a source file
+tests/test_pancake_environment.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_pancake_environment.cpp.i
+.PHONY : tests/test_pancake_environment.cpp.i
+
+tests/test_pancake_environment.s: tests/test_pancake_environment.cpp.s
+.PHONY : tests/test_pancake_environment.s
+
+# target to generate assembly for a file
+tests/test_pancake_environment.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_pancake_environment.cpp.s
+.PHONY : tests/test_pancake_environment.cpp.s
 
 # Help Target
 help:
@@ -160,11 +389,34 @@ help:
 	@echo "... clean"
 	@echo "... depend"
 	@echo "... edit_cache"
+	@echo "... install"
+	@echo "... install/local"
+	@echo "... install/strip"
+	@echo "... list_install_components"
 	@echo "... rebuild_cache"
-	@echo "... BucketHeap"
+	@echo "... test"
+	@echo "... core_lib"
+	@echo "... gmock"
+	@echo "... gmock_main"
+	@echo "... gtest"
+	@echo "... gtest_main"
+	@echo "... main"
+	@echo "... tests"
+	@echo "... src/grid_environment.o"
+	@echo "... src/grid_environment.i"
+	@echo "... src/grid_environment.s"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
+	@echo "... src/pancake_environment.o"
+	@echo "... src/pancake_environment.i"
+	@echo "... src/pancake_environment.s"
+	@echo "... tests/test_grid_environment.o"
+	@echo "... tests/test_grid_environment.i"
+	@echo "... tests/test_grid_environment.s"
+	@echo "... tests/test_pancake_environment.o"
+	@echo "... tests/test_pancake_environment.i"
+	@echo "... tests/test_pancake_environment.s"
 .PHONY : help
 
 

@@ -7,7 +7,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_subdirectory(googletest)
 
-file(GLOB SRC_FILES "src/environments.cpp")
+set(SRC_FILES src/grid_environment.cpp src/pancake_environment.cpp)
 add_library(core_lib ${SRC_FILES})
 
 add_executable(main src/main.cpp)
@@ -19,7 +19,7 @@ target_include_directories(core_lib PUBLIC include) # Adds include/ to the inclu
 enable_testing()
 include(GoogleTest)
 
-add_executable(tests tests/*.cpp)
+add_executable(tests tests/test_grid_environment.cpp tests/test_pancake_environment.cpp)
 target_link_libraries(tests PRIVATE core_lib gtest_main)
 gtest_discover_tests(tests)
 

@@ -1,6 +1,8 @@
+// src/grid_environment.cpp
+
 #include "environments/environments.h"
 
-GridEnvironment::GridEnvironment(uint32_t w, uint32_t h, uint32_t seed = 42) : w_(w), h_(h), goal_id_(w_ * h_ - 1) {
+GridEnvironment::GridEnvironment(uint32_t w, uint32_t h, uint32_t seed) : w_(w), h_(h), goal_id_(w_ * h_ - 1) {
     uint32_t total_states = w * h;
     pool_.reserve(total_states);
     node_states_.reserve(total_states);
