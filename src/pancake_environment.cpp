@@ -1,7 +1,6 @@
 // src/pancake_environment.cpp
 
 #include "environments/environments.h"
-#include <algorithm>
 #include <random>
 
 PancakeEnvironment::PancakeEnvironment(uint32_t seed, uint32_t capacity) : capacity_(capacity) {

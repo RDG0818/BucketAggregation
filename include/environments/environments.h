@@ -2,8 +2,14 @@
 
 #pragma once
 
+#include <algorithm>
 #include <array>
+#include <iostream>
+#include <fstream>
+#include <numeric>
 #include <random>
+#include <sstream>
+#include <stdexcept>
 #include <unordered_map>
 
 #include "node.h"
@@ -30,7 +36,7 @@ public:
 
   uint8_t get_cell_cost(uint32_t state_id) const { return grid_map_[state_id]; }
 
-  uint32_t get_state_id(uint32_t node_handle) const { return node_states_[node_handle]; }
+  uint32_t get_state(uint32_t node_handle) const { return node_states_[node_handle]; }
   uint32_t get_node_handle(uint32_t state_id) const { return lookup_table_[state_id]; }
   NodePool& get_pool() { return pool_; }
   const NodePool& get_pool() const { return pool_; }
@@ -98,18 +104,42 @@ private:
 
 };
 
-// class SlidingTileEnvironment {
+class SlidingTileEnvironment {
 
-// public:
+public:
 
-//   void get_successors(uint32_t node_index, std::vector<uint32_t>& neighbors);
-//   uint32_t get_heuristic(uint32_t node_index);
-//   bool is_goal(uint32_t node_index);
+  using T = uint64_t;
 
-//   uint32_t get_start_node();
+  SlidingTileEnvironment(int instance_index, std::string filename, uint32_t capacity = 1000000);
 
-//   NodePool& pool;
+  void get_successors(uint32_t node_index, std::vector<uint32_t>& neighbors);
+  uint32_t get_heuristic(T state) const;
+  bool is_goal(T state) const { return state == goal_state_; };
 
-//   std::vector<uint64_t> node_states; 
+  uint32_t get_start_node();
 
-// };
+  T get_state(uint32_t handle) const { return node_states_[handle]; };
+  uint32_t get_node_handle(T state) const { 
+    auto it = lookup_table_.find(state);
+    if (it != lookup_table_.end()) {
+      return it->second;
+    }
+    return NODE_NULL;
+  }
+
+  NodePool& get_pool() {return pool_; }
+
+  inline uint8_t get_tile(T state, int index) const { return (state >> ((15 - index) * 4)) & 0xF; };
+
+private:
+
+  uint32_t capacity_;
+  NodePool pool_;
+
+  std::vector<T> node_states_; 
+  std::unordered_map<T, uint32_t> lookup_table_;
+
+  T start_state_;
+  T goal_state_;
+
+};

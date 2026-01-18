@@ -7,7 +7,6 @@
 class PancakeEnvironmentTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        // Use a fixed seed for reproducibility and a small capacity for speed
         env = new PancakeEnvironment(12345, 100);
     }
 
@@ -24,10 +23,8 @@ TEST_F(PancakeEnvironmentTest, ConstructorState) {
     PancakeEnvironment::T goal_state;
     std::iota(goal_state.begin(), goal_state.end(), 0);
 
-    // The start state should not be the goal state (highly unlikely with the seed)
     EXPECT_NE(start_state, goal_state);
 
-    // The start state should be a permutation of the goal state.
     std::sort(start_state.begin(), start_state.end());
     EXPECT_EQ(start_state, goal_state);
 }
@@ -44,26 +41,18 @@ TEST_F(PancakeEnvironmentTest, GoalVerification) {
 TEST_F(PancakeEnvironmentTest, HeuristicCalculation) {
     PancakeEnvironment::T state;
 
-    // Test 1: Goal state should have h=0
     std::iota(state.begin(), state.end(), 0);
     EXPECT_EQ(env->get_heuristic(state), 0);
 
-    // Test 2: A reversed state should have h=0 with the current heuristic
     std::iota(state.rbegin(), state.rend(), 0);
     EXPECT_EQ(env->get_heuristic(state), 0);
 
-    // Test 3: A state with a known number of gaps
-    // 1, 0, 2, 3, ...
     std::iota(state.begin(), state.end(), 0);
     std::swap(state[0], state[1]); // state is now 1, 0, 2, 3, ...
-    // Gaps: abs(0-2)=2. h should be 1.
     EXPECT_EQ(env->get_heuristic(state), 1);
     
-    // Test 4: Another state
-    // 0, 2, 1, 3, ...
     std::iota(state.begin(), state.end(), 0);
     std::swap(state[1], state[2]); // state is now 0, 2, 1, 3, ...
-    // Gaps: abs(0-2)=2, abs(2-1)=1, abs(1-3)=2. h should be 2.
     EXPECT_EQ(env->get_heuristic(state), 2);
 }
 

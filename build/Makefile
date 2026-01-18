@@ -334,6 +334,30 @@ src/pancake_environment.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/pancake_environment.cpp.s
 .PHONY : src/pancake_environment.cpp.s
 
+src/sliding_tile_environment.o: src/sliding_tile_environment.cpp.o
+.PHONY : src/sliding_tile_environment.o
+
+# target to build an object file
+src/sliding_tile_environment.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/sliding_tile_environment.cpp.o
+.PHONY : src/sliding_tile_environment.cpp.o
+
+src/sliding_tile_environment.i: src/sliding_tile_environment.cpp.i
+.PHONY : src/sliding_tile_environment.i
+
+# target to preprocess a source file
+src/sliding_tile_environment.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/sliding_tile_environment.cpp.i
+.PHONY : src/sliding_tile_environment.cpp.i
+
+src/sliding_tile_environment.s: src/sliding_tile_environment.cpp.s
+.PHONY : src/sliding_tile_environment.s
+
+# target to generate assembly for a file
+src/sliding_tile_environment.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/sliding_tile_environment.cpp.s
+.PHONY : src/sliding_tile_environment.cpp.s
+
 tests/test_grid_environment.o: tests/test_grid_environment.cpp.o
 .PHONY : tests/test_grid_environment.o
 
@@ -382,6 +406,30 @@ tests/test_pancake_environment.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_pancake_environment.cpp.s
 .PHONY : tests/test_pancake_environment.cpp.s
 
+tests/test_sliding_tile_environment.o: tests/test_sliding_tile_environment.cpp.o
+.PHONY : tests/test_sliding_tile_environment.o
+
+# target to build an object file
+tests/test_sliding_tile_environment.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_sliding_tile_environment.cpp.o
+.PHONY : tests/test_sliding_tile_environment.cpp.o
+
+tests/test_sliding_tile_environment.i: tests/test_sliding_tile_environment.cpp.i
+.PHONY : tests/test_sliding_tile_environment.i
+
+# target to preprocess a source file
+tests/test_sliding_tile_environment.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_sliding_tile_environment.cpp.i
+.PHONY : tests/test_sliding_tile_environment.cpp.i
+
+tests/test_sliding_tile_environment.s: tests/test_sliding_tile_environment.cpp.s
+.PHONY : tests/test_sliding_tile_environment.s
+
+# target to generate assembly for a file
+tests/test_sliding_tile_environment.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_sliding_tile_environment.cpp.s
+.PHONY : tests/test_sliding_tile_environment.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -411,12 +459,18 @@ help:
 	@echo "... src/pancake_environment.o"
 	@echo "... src/pancake_environment.i"
 	@echo "... src/pancake_environment.s"
+	@echo "... src/sliding_tile_environment.o"
+	@echo "... src/sliding_tile_environment.i"
+	@echo "... src/sliding_tile_environment.s"
 	@echo "... tests/test_grid_environment.o"
 	@echo "... tests/test_grid_environment.i"
 	@echo "... tests/test_grid_environment.s"
 	@echo "... tests/test_pancake_environment.o"
 	@echo "... tests/test_pancake_environment.i"
 	@echo "... tests/test_pancake_environment.s"
+	@echo "... tests/test_sliding_tile_environment.o"
+	@echo "... tests/test_sliding_tile_environment.i"
+	@echo "... tests/test_sliding_tile_environment.s"
 .PHONY : help
 
 
