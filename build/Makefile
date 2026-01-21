@@ -262,6 +262,30 @@ gtest_main/fast:
 	$(MAKE) $(MAKESILENT) -f googletest/googletest/CMakeFiles/gtest_main.dir/build.make googletest/googletest/CMakeFiles/gtest_main.dir/build
 .PHONY : gtest_main/fast
 
+src/binary_heap.o: src/binary_heap.cpp.o
+.PHONY : src/binary_heap.o
+
+# target to build an object file
+src/binary_heap.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/binary_heap.cpp.o
+.PHONY : src/binary_heap.cpp.o
+
+src/binary_heap.i: src/binary_heap.cpp.i
+.PHONY : src/binary_heap.i
+
+# target to preprocess a source file
+src/binary_heap.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/binary_heap.cpp.i
+.PHONY : src/binary_heap.cpp.i
+
+src/binary_heap.s: src/binary_heap.cpp.s
+.PHONY : src/binary_heap.s
+
+# target to generate assembly for a file
+src/binary_heap.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/binary_heap.cpp.s
+.PHONY : src/binary_heap.cpp.s
+
 src/grid_environment.o: src/grid_environment.cpp.o
 .PHONY : src/grid_environment.o
 
@@ -450,6 +474,9 @@ help:
 	@echo "... gtest_main"
 	@echo "... main"
 	@echo "... tests"
+	@echo "... src/binary_heap.o"
+	@echo "... src/binary_heap.i"
+	@echo "... src/binary_heap.s"
 	@echo "... src/grid_environment.o"
 	@echo "... src/grid_environment.i"
 	@echo "... src/grid_environment.s"

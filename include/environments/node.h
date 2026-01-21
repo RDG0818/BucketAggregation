@@ -20,27 +20,27 @@ class NodePool {
 public:
 
   void reserve(uint32_t capacity) { // preallocate memory
-    nodes.reserve(capacity);
+    nodes_.reserve(capacity);
   }
 
   void clear() {
-    nodes.clear(); 
+    nodes_.clear(); 
   }
 
   uint32_t allocate(uint32_t parent, uint32_t g, uint32_t h) {
     Node n = {parent, g, h, NODE_NULL};
-    nodes.push_back(n);
-    return nodes.size() - 1;
+    nodes_.push_back(n);
+    return nodes_.size() - 1;
   }
 
-  Node& operator[](uint32_t h) { return nodes[h]; }; // Write access
-  const Node& operator[](uint32_t h) const {return nodes[h]; } // Read access
+  Node& operator[](uint32_t h) { return nodes_[h]; }; // Write access
+  const Node& operator[](uint32_t h) const {return nodes_[h]; } // Read access
   
-  uint32_t size() const { return nodes.size(); }
+  uint32_t size() const { return nodes_.size(); }
 
 private:
 
-  std::vector<Node> nodes; // Nodes are stored contiguously
+  std::vector<Node> nodes_; // Nodes are stored contiguously
 
 };
 

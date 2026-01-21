@@ -7,7 +7,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_subdirectory(googletest)
 
-set(SRC_FILES src/grid_environment.cpp src/pancake_environment.cpp src/sliding_tile_environment.cpp)
+set(SRC_FILES src/grid_environment.cpp src/pancake_environment.cpp src/sliding_tile_environment.cpp src/binary_heap.cpp)
 add_library(core_lib ${SRC_FILES})
 
 add_executable(main src/main.cpp)
