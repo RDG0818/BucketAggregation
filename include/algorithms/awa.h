@@ -13,7 +13,8 @@ public:
 
   void solve() {
     uint32_t start_node = env_.get_start_node();
-    priority_queue_.push(start_node);
+    const auto& start_node_data = env_.get_pool()[start_node];
+    priority_queue_.push(start_node, start_node_data.g + start_node_data.h);
 
     uint32_t incumbent_cost = std::numeric_limits<uint32_t>::max();
     std::vector<uint32_t> neighbors;
@@ -36,15 +37,16 @@ public:
 
       for (uint32_t neighbor : neighbors) {
         const auto& neighbor_data = env_.get_pool()[neighbor];
+        uint32_t priority = neighbor_data.g + neighbor_data.h;
               
-        if (neighbor_data.g + neighbor_data.h >= incumbent_cost) {
+        if (priority >= incumbent_cost) {
           continue;
         }
 
         if (priority_queue_.contains(neighbor)) {
-          priority_queue_.decrease_key(neighbor);
+          priority_queue_.decrease_key(neighbor, priority);
         } else {
-          priority_queue_.push(neighbor);
+          priority_queue_.push(neighbor, priority);
         }
       }
     }

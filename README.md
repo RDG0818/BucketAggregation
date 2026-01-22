@@ -16,7 +16,7 @@ git submodule update --init --recursive
   - Templated Heuristic
   - 15 Puzzle
   - 5000x5000 Grid Pathfinding (Add Integer/Real Valued Weight Costs)
-  - 48 Permutation Problem
+  - 48 Pancake Problem
 - Template for priority queues
   - Bucket Queue
   - Two-Level Bucket Queue
