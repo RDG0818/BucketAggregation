@@ -90,8 +90,8 @@ TEST_F(AStarTest, StraightLinePath) {
     env.add_edge(2, 3, 1);
     env.add_edge(3, 4, 1);
 
-    BinaryHeap pq(env.get_pool());
-    AStar<TestEnvironment, BinaryHeap> a_star(env, pq);
+    BinaryHeap<int> pq(env.get_pool());
+    AStar<TestEnvironment, BinaryHeap<int>> a_star(env, pq);
     a_star.solve();
 
     uint32_t goal_handle = env.get_node_handle(4);
@@ -117,8 +117,8 @@ TEST_F(AStarTest, PathWithChoice) {
     env.add_edge(0, 2, 2); 
     env.add_edge(2, 3, 2);
 
-    BinaryHeap pq(env.get_pool());
-    AStar<TestEnvironment, BinaryHeap> a_star(env, pq);
+    BinaryHeap<int> pq(env.get_pool());
+    AStar<TestEnvironment, BinaryHeap<int>> a_star(env, pq);
     a_star.solve();
     
     uint32_t goal_handle = env.get_node_handle(3);
@@ -141,8 +141,8 @@ TEST_F(AStarTest, Unsolvable) {
     TestEnvironment env(0, 4);
     env.add_edge(0, 1, 1);
     
-    BinaryHeap pq(env.get_pool());
-    AStar<TestEnvironment, BinaryHeap> a_star(env, pq);
+    BinaryHeap<int> pq(env.get_pool());
+    AStar<TestEnvironment, BinaryHeap<int>> a_star(env, pq);
     a_star.solve();
 
     uint32_t goal_handle = env.get_node_handle(4);

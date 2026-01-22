@@ -1,13 +1,18 @@
 #include "queues/binary_heap.h"
 #include "algorithms/a_star.h"
+#include "algorithms/ana_star.h"
 #include "environments/environments.h"
 #include "utils/utils.h"
 
 int main() {
 
   GridEnvironment env(10, 10);
-  BinaryHeap heap(env.get_pool());
-  AStar<GridEnvironment, BinaryHeap> solver(env, heap);
+
+  // A* needs a min-heap on integers (g+h)
+  using AStarHeap = BinaryHeap<uint32_t, std::less<uint32_t>>;
+  AStarHeap heap(env.get_pool());
+
+  AStar<GridEnvironment, AStarHeap> solver(env, heap);
 
   utils::SearchStatistics stats;
 
@@ -43,6 +48,44 @@ int main() {
   // For this example, we'll leave it at 0.
 
   utils::print_stats(stats);
+
+  // --- Run ANA* on the same problem ---
+  std::cout << "\n\n--- Running ANA* ---\n";
+
+  GridEnvironment ana_env(10, 10);
+  
+  // ANA* needs a max-heap on doubles (for e-values)
+  using ANAStarHeap = BinaryHeap<float, std::greater<float>>;
+  ANAStarHeap ana_heap(ana_env.get_pool());
+
+  ANAStar<GridEnvironment, ANAStarHeap> ana_solver(ana_env, ana_heap);
+
+  utils::SearchStatistics ana_stats;
+  
+  ana_stats.execution_time = utils::measure_time([&](){
+    ana_solver.solve();
+  });
+
+  // Since this is a new run, get memory usage again
+  ana_stats.peak_memory_bytes = utils::get_memory_usage_bytes();
+
+  // Retrieve ANA* stats. Since we let it run to completion, 
+  // it should find the same optimal solution as A*.
+  uint32_t ana_goal_handle = ana_env.get_node_handle(goal_state_id);
+  if (ana_goal_handle != NODE_NULL) {
+      ana_stats.solution_cost = ana_env.get_pool()[ana_goal_handle].g;
+      ana_stats.solution_length = 0;
+      uint32_t current_node = ana_goal_handle;
+      while (ana_env.get_pool()[current_node].parent != NODE_NULL) {
+          ana_stats.solution_length++;
+          current_node = ana_env.get_pool()[current_node].parent;
+      }
+      if (ana_stats.solution_length > 0) {
+          ana_stats.solution_length++;
+      }
+  }
+
+  utils::print_stats(ana_stats);
 
   return 0;
 }

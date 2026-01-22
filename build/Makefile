@@ -262,30 +262,6 @@ gtest_main/fast:
 	$(MAKE) $(MAKESILENT) -f googletest/googletest/CMakeFiles/gtest_main.dir/build.make googletest/googletest/CMakeFiles/gtest_main.dir/build
 .PHONY : gtest_main/fast
 
-src/binary_heap.o: src/binary_heap.cpp.o
-.PHONY : src/binary_heap.o
-
-# target to build an object file
-src/binary_heap.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/binary_heap.cpp.o
-.PHONY : src/binary_heap.cpp.o
-
-src/binary_heap.i: src/binary_heap.cpp.i
-.PHONY : src/binary_heap.i
-
-# target to preprocess a source file
-src/binary_heap.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/binary_heap.cpp.i
-.PHONY : src/binary_heap.cpp.i
-
-src/binary_heap.s: src/binary_heap.cpp.s
-.PHONY : src/binary_heap.s
-
-# target to generate assembly for a file
-src/binary_heap.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/binary_heap.cpp.s
-.PHONY : src/binary_heap.cpp.s
-
 src/bucket_queue.o: src/bucket_queue.cpp.o
 .PHONY : src/bucket_queue.o
 
@@ -429,6 +405,30 @@ tests/test_a_star.s: tests/test_a_star.cpp.s
 tests/test_a_star.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_a_star.cpp.s
 .PHONY : tests/test_a_star.cpp.s
+
+tests/test_ana_star.o: tests/test_ana_star.cpp.o
+.PHONY : tests/test_ana_star.o
+
+# target to build an object file
+tests/test_ana_star.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_ana_star.cpp.o
+.PHONY : tests/test_ana_star.cpp.o
+
+tests/test_ana_star.i: tests/test_ana_star.cpp.i
+.PHONY : tests/test_ana_star.i
+
+# target to preprocess a source file
+tests/test_ana_star.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_ana_star.cpp.i
+.PHONY : tests/test_ana_star.cpp.i
+
+tests/test_ana_star.s: tests/test_ana_star.cpp.s
+.PHONY : tests/test_ana_star.s
+
+# target to generate assembly for a file
+tests/test_ana_star.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_ana_star.cpp.s
+.PHONY : tests/test_ana_star.cpp.s
 
 tests/test_awa.o: tests/test_awa.cpp.o
 .PHONY : tests/test_awa.o
@@ -594,9 +594,6 @@ help:
 	@echo "... gtest_main"
 	@echo "... main"
 	@echo "... tests"
-	@echo "... src/binary_heap.o"
-	@echo "... src/binary_heap.i"
-	@echo "... src/binary_heap.s"
 	@echo "... src/bucket_queue.o"
 	@echo "... src/bucket_queue.i"
 	@echo "... src/bucket_queue.s"
@@ -615,6 +612,9 @@ help:
 	@echo "... tests/test_a_star.o"
 	@echo "... tests/test_a_star.i"
 	@echo "... tests/test_a_star.s"
+	@echo "... tests/test_ana_star.o"
+	@echo "... tests/test_ana_star.i"
+	@echo "... tests/test_ana_star.s"
 	@echo "... tests/test_awa.o"
 	@echo "... tests/test_awa.i"
 	@echo "... tests/test_awa.s"

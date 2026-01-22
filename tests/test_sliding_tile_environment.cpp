@@ -19,7 +19,7 @@ protected:
         outfile.close();
 
         // Use the second instance (index 1) for most tests
-        env = new SlidingTileEnvironment(1, "test_tile_instances.txt");
+        env = new SlidingTileEnvironment(1, "test_tile_instances.txt", 1000);
     }
 
     void TearDown() override {
@@ -53,7 +53,7 @@ TEST_F(SlidingTileEnvironmentTest, ConstructorAndStartState) {
     EXPECT_EQ(start_state, expected_start_state);
 
     // Test with goal state instance (index 0)
-    SlidingTileEnvironment goal_env(0, "test_tile_instances.txt");
+    SlidingTileEnvironment goal_env(0, "test_tile_instances.txt", 1000);
     uint32_t goal_start_handle = goal_env.get_start_node();
     SlidingTileEnvironment::T goal_start_state = goal_env.get_state(goal_start_handle);
     SlidingTileEnvironment::T expected_goal_state = 0x123456789ABCDEF0;

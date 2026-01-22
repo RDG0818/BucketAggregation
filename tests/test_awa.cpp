@@ -90,8 +90,8 @@ TEST_F(AWAStarTest, StraightLinePath) {
     env.add_edge(2, 3, 1);
     env.add_edge(3, 4, 1);
 
-    BinaryHeap pq(env.get_pool());
-    AWAStar<TestEnvironment, BinaryHeap> awa_star(env, pq);
+    BinaryHeap<int> pq(env.get_pool());
+    AWAStar<TestEnvironment, BinaryHeap<int>> awa_star(env, pq);
     awa_star.solve();
 
     uint32_t goal_handle = env.get_node_handle(4);
@@ -117,8 +117,8 @@ TEST_F(AWAStarTest, PathWithChoice) {
     env.add_edge(0, 2, 2); 
     env.add_edge(2, 3, 2); 
 
-    BinaryHeap pq(env.get_pool());
-    AWAStar<TestEnvironment, BinaryHeap> awa_star(env, pq);
+    BinaryHeap<int> pq(env.get_pool());
+    AWAStar<TestEnvironment, BinaryHeap<int>> awa_star(env, pq);
     awa_star.solve();
     
     uint32_t goal_handle = env.get_node_handle(3);
@@ -148,8 +148,8 @@ TEST_F(AWAStarTest, Pruning) {
     env.add_edge(2, 3, 1);
     env.add_edge(3, 4, 1); // Path 0-2-3-4, cost 3
     
-    BinaryHeap pq(env.get_pool());
-    AWAStar<TestEnvironment, BinaryHeap> awa_star(env, pq);
+    BinaryHeap<int> pq(env.get_pool());
+    AWAStar<TestEnvironment, BinaryHeap<int>> awa_star(env, pq);
     awa_star.solve();
     
     uint32_t goal_handle = env.get_node_handle(4);

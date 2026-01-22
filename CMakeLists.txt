@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(BucketHeap VERSION 1.0) # PROJECT_NAME = BucketHeap, PROJECT_VERSION = 1.0
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -11,8 +11,8 @@ set(SRC_FILES
 src/grid_environment.cpp 
 src/pancake_environment.cpp 
 src/sliding_tile_environment.cpp 
-src/binary_heap.cpp
-src/bucket_queue.cpp)
+src/bucket_queue.cpp
+)
 add_library(core_lib ${SRC_FILES})
 
 add_executable(main src/main.cpp)
@@ -32,6 +32,7 @@ tests/test_binary_heap.cpp
 tests/test_bucket_queue.cpp
 tests/test_a_star.cpp
 tests/test_awa.cpp
+tests/test_ana_star.cpp
 )
 target_link_libraries(tests PRIVATE core_lib gtest_main)
 gtest_discover_tests(tests)
