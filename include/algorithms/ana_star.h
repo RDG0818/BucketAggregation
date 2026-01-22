@@ -3,13 +3,14 @@
 #include <vector>
 #include <cstdint>
 #include <limits>
+#include "utils/utils.h"
 
 template <typename E, typename PQ>
 class ANAStar {
 
 public:
-
-    ANAStar(E& env, PQ& priority_queue) : env_(env), priority_queue_(priority_queue), G_upper_(std::numeric_limits<double>::max()) {};
+    ANAStar(E& env, PQ& priority_queue, utils::SearchStats* stats = nullptr) 
+        : env_(env), priority_queue_(priority_queue), stats_(stats), G_upper_(std::numeric_limits<double>::max()) {};
 
     void solve() {
         uint32_t start_node_handle = env_.get_start_node();
@@ -17,6 +18,7 @@ public:
         
         if (env_.is_goal(env_.get_state(start_node_handle))) {
             G_upper_ = start_node_data.g;
+            if (stats_) stats_->solution_cost = G_upper_;
             return;
         }
 
@@ -33,11 +35,15 @@ public:
             if (current_node_data.g + current_node_data.h >= G_upper_) {
                 continue;
             }
+            if (stats_) {
+                stats_->nodes_expanded++;
+            }
 
             if (env_.is_goal(env_.get_state(current_node_handle))) {
                 if (current_node_data.g < G_upper_) {
                     // Found a new, better solution. Update the upper bound.
                     G_upper_ = current_node_data.g;
+                    if (stats_) stats_->solution_cost = G_upper_;
 
                     // Rebuild the entire heap with new e-values based on the new G_upper
                     auto calculator = [&](uint32_t handle) -> double {
@@ -90,5 +96,6 @@ private:
 
     E& env_;
     PQ& priority_queue_;
+    utils::SearchStats* stats_;
     double G_upper_;
 };

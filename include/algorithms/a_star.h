@@ -2,13 +2,15 @@
 
 #include <vector>
 #include <cstdint>
+#include "utils/utils.h"
 
 template <typename E, typename PQ> 
 class AStar {
 
 public:
 
-  AStar(E& env, PQ& priority_queue) : env_(env), priority_queue_(priority_queue) {};
+  AStar(E& env, PQ& priority_queue, utils::SearchStats* stats = nullptr) 
+    : env_(env), priority_queue_(priority_queue), stats_(stats) {};
 
   void solve() {
     uint32_t start_node = env_.get_start_node();
@@ -19,6 +21,9 @@ public:
 
     while (!priority_queue_.empty()) {
       uint32_t current_node = priority_queue_.pop();
+      if (stats_) {
+          stats_->nodes_expanded++;
+      }
 
       if (env_.is_goal(env_.get_state(current_node))) {
         return;
@@ -43,5 +48,6 @@ private:
 
   E& env_;
   PQ& priority_queue_;
+  utils::SearchStats* stats_;
 
 };
