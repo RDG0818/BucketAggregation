@@ -12,6 +12,7 @@ src/grid_environment.cpp
 src/pancake_environment.cpp 
 src/sliding_tile_environment.cpp 
 src/bucket_queue.cpp
+src/two_level_bucket_queue.cpp
 )
 add_library(core_lib ${SRC_FILES})
 
@@ -33,6 +34,7 @@ tests/test_bucket_queue.cpp
 tests/test_a_star.cpp
 tests/test_awa.cpp
 tests/test_ana_star.cpp
+tests/test_two_level_bucket_queue.cpp
 )
 target_link_libraries(tests PRIVATE core_lib gtest_main)
 gtest_discover_tests(tests)

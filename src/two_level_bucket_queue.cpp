@@ -32,7 +32,26 @@ void TwoLevelBucketQueue::push(uint32_t handle, uint32_t priority) {
 }
 
 void TwoLevelBucketQueue::decrease_key(uint32_t handle, uint32_t new_priority) {
-    push(handle, new_priority);
+    const uint32_t high_idx = new_priority >> LOW_LEVEL_BITS;
+    const uint32_t low_idx = new_priority & LOW_LEVEL_MASK;
+
+    if (high_idx >= buckets_.size()) {
+        buckets_.resize(high_idx + 1);
+    }
+
+    if (!buckets_[high_idx]) {
+        buckets_[high_idx] = std::make_unique<LowLevelBuckets>(LOW_LEVEL_SIZE);
+    }
+
+    (*buckets_[high_idx])[low_idx].push_back(handle);
+    pool_[handle].queue_ref = new_priority;
+
+    if (high_idx < top_level_idx_) {
+        top_level_idx_ = high_idx;
+        low_level_idx_ = low_idx;
+    } else if (high_idx == top_level_idx_ && low_idx < low_level_idx_) {
+        low_level_idx_ = low_idx;
+    }
 }
 
 uint32_t TwoLevelBucketQueue::pop() {

@@ -26,7 +26,6 @@ void BucketQueue::decrease_key(uint32_t handle, uint32_t new_priority) {
     resize_if_needed(new_priority);
     buckets_[new_priority].push_back(handle);
     pool_[handle].queue_ref = new_priority; // Update to new priority
-    count_++;
     if (new_priority < min_bucket_idx_) {
         min_bucket_idx_ = new_priority;
     }

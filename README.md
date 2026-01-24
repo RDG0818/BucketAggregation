@@ -27,8 +27,6 @@ git submodule update --init --recursive
   - A*
   - WA*
   - ANA*
-  - Dynamic Potential Search
-  - Optimistic Search
 - Hybrid Expansion Strategy Demo
 - Modifying Memory Management
 - Track Parameters
