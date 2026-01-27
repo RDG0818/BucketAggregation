@@ -37,6 +37,14 @@ public:
         return best_handle;
     }
 
+    uint32_t top() {
+        if (empty()) {
+            return NODE_NULL;
+        }
+
+        return heap_[0].handle;
+    }
+
     void decrease_key(uint32_t handle, PriorityType new_priority) {
         int current_idx = pool_[handle].queue_ref;
         // Ensure the handle is actually in the heap at the expected location

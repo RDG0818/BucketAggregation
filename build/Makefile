@@ -382,30 +382,6 @@ src/sliding_tile_environment.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/sliding_tile_environment.cpp.s
 .PHONY : src/sliding_tile_environment.cpp.s
 
-src/two_level_bucket_queue.o: src/two_level_bucket_queue.cpp.o
-.PHONY : src/two_level_bucket_queue.o
-
-# target to build an object file
-src/two_level_bucket_queue.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/two_level_bucket_queue.cpp.o
-.PHONY : src/two_level_bucket_queue.cpp.o
-
-src/two_level_bucket_queue.i: src/two_level_bucket_queue.cpp.i
-.PHONY : src/two_level_bucket_queue.i
-
-# target to preprocess a source file
-src/two_level_bucket_queue.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/two_level_bucket_queue.cpp.i
-.PHONY : src/two_level_bucket_queue.cpp.i
-
-src/two_level_bucket_queue.s: src/two_level_bucket_queue.cpp.s
-.PHONY : src/two_level_bucket_queue.s
-
-# target to generate assembly for a file
-src/two_level_bucket_queue.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/two_level_bucket_queue.cpp.s
-.PHONY : src/two_level_bucket_queue.cpp.s
-
 tests/test_a_star.o: tests/test_a_star.cpp.o
 .PHONY : tests/test_a_star.o
 
@@ -501,6 +477,30 @@ tests/test_binary_heap.s: tests/test_binary_heap.cpp.s
 tests/test_binary_heap.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_binary_heap.cpp.s
 .PHONY : tests/test_binary_heap.cpp.s
+
+tests/test_bucket_heap.o: tests/test_bucket_heap.cpp.o
+.PHONY : tests/test_bucket_heap.o
+
+# target to build an object file
+tests/test_bucket_heap.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_bucket_heap.cpp.o
+.PHONY : tests/test_bucket_heap.cpp.o
+
+tests/test_bucket_heap.i: tests/test_bucket_heap.cpp.i
+.PHONY : tests/test_bucket_heap.i
+
+# target to preprocess a source file
+tests/test_bucket_heap.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_bucket_heap.cpp.i
+.PHONY : tests/test_bucket_heap.cpp.i
+
+tests/test_bucket_heap.s: tests/test_bucket_heap.cpp.s
+.PHONY : tests/test_bucket_heap.s
+
+# target to generate assembly for a file
+tests/test_bucket_heap.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_bucket_heap.cpp.s
+.PHONY : tests/test_bucket_heap.cpp.s
 
 tests/test_bucket_queue.o: tests/test_bucket_queue.cpp.o
 .PHONY : tests/test_bucket_queue.o
@@ -598,30 +598,6 @@ tests/test_sliding_tile_environment.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_sliding_tile_environment.cpp.s
 .PHONY : tests/test_sliding_tile_environment.cpp.s
 
-tests/test_two_level_bucket_queue.o: tests/test_two_level_bucket_queue.cpp.o
-.PHONY : tests/test_two_level_bucket_queue.o
-
-# target to build an object file
-tests/test_two_level_bucket_queue.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_two_level_bucket_queue.cpp.o
-.PHONY : tests/test_two_level_bucket_queue.cpp.o
-
-tests/test_two_level_bucket_queue.i: tests/test_two_level_bucket_queue.cpp.i
-.PHONY : tests/test_two_level_bucket_queue.i
-
-# target to preprocess a source file
-tests/test_two_level_bucket_queue.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_two_level_bucket_queue.cpp.i
-.PHONY : tests/test_two_level_bucket_queue.cpp.i
-
-tests/test_two_level_bucket_queue.s: tests/test_two_level_bucket_queue.cpp.s
-.PHONY : tests/test_two_level_bucket_queue.s
-
-# target to generate assembly for a file
-tests/test_two_level_bucket_queue.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_two_level_bucket_queue.cpp.s
-.PHONY : tests/test_two_level_bucket_queue.cpp.s
-
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -657,9 +633,6 @@ help:
 	@echo "... src/sliding_tile_environment.o"
 	@echo "... src/sliding_tile_environment.i"
 	@echo "... src/sliding_tile_environment.s"
-	@echo "... src/two_level_bucket_queue.o"
-	@echo "... src/two_level_bucket_queue.i"
-	@echo "... src/two_level_bucket_queue.s"
 	@echo "... tests/test_a_star.o"
 	@echo "... tests/test_a_star.i"
 	@echo "... tests/test_a_star.s"
@@ -672,6 +645,9 @@ help:
 	@echo "... tests/test_binary_heap.o"
 	@echo "... tests/test_binary_heap.i"
 	@echo "... tests/test_binary_heap.s"
+	@echo "... tests/test_bucket_heap.o"
+	@echo "... tests/test_bucket_heap.i"
+	@echo "... tests/test_bucket_heap.s"
 	@echo "... tests/test_bucket_queue.o"
 	@echo "... tests/test_bucket_queue.i"
 	@echo "... tests/test_bucket_queue.s"
@@ -684,9 +660,6 @@ help:
 	@echo "... tests/test_sliding_tile_environment.o"
 	@echo "... tests/test_sliding_tile_environment.i"
 	@echo "... tests/test_sliding_tile_environment.s"
-	@echo "... tests/test_two_level_bucket_queue.o"
-	@echo "... tests/test_two_level_bucket_queue.i"
-	@echo "... tests/test_two_level_bucket_queue.s"
 .PHONY : help
 
 

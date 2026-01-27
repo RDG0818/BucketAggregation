@@ -82,7 +82,7 @@ TEST_F(BucketQueueTest, DecreaseKey) {
     EXPECT_EQ(queue->pop(), h3); // Should pop h3 first
     EXPECT_EQ(queue->pop(), h1);
     EXPECT_EQ(queue->pop(), h2);
-    EXPECT_FALSE(queue->empty()); // old h3 should still be in queue
+    EXPECT_TRUE(queue->empty());  // ignores the stale node
     
     EXPECT_FALSE(queue->contains(h1));
     EXPECT_FALSE(queue->contains(h2));
@@ -143,14 +143,12 @@ TEST_F(BucketQueueTest, ComplexDecreaseKeyAndContains) {
     // After the valid node is popped, `contains` should be false.
     EXPECT_FALSE(queue->contains(h1));
     
-    // The queue still contains stale nodes, so it's not empty.
-    EXPECT_FALSE(queue->empty());
+    EXPECT_TRUE(queue->empty());
 
     // The next pop will process the stale nodes and eventually return NODE_NULL
     // as there are no more valid nodes.
     popped = queue->pop();
     EXPECT_EQ(popped, NODE_NULL);
 
-    // After all stale nodes are cleared, the queue is finally empty.
     EXPECT_TRUE(queue->empty());
 }

@@ -22,7 +22,18 @@ public:
             return;
         }
 
-        double start_e = calculate_e(start_node_data.g, start_node_data.h);
+        // Define the priority calculator
+        auto calculator = [&](uint32_t handle) -> double {
+            const auto& node = env_.get_pool()[handle];
+            return calculate_e(node.g, node.h);
+        };
+
+        // Pass the calculator to the queue if it supports it (for BucketHeap)
+        if constexpr (requires(PQ& q) { q.set_priority_calculator(calculator); }) {
+            priority_queue_.set_priority_calculator(calculator);
+        }
+
+        double start_e = calculator(start_node_handle);
         priority_queue_.push(start_node_handle, start_e);
 
         std::vector<uint32_t> neighbors;
@@ -46,11 +57,9 @@ public:
                     if (stats_) stats_->solution_cost = G_upper_;
 
                     // Rebuild the entire heap with new e-values based on the new G_upper
-                    auto calculator = [&](uint32_t handle) -> double {
-                        const auto& node = env_.get_pool()[handle];
-                        return calculate_e(node.g, node.h);
-                    };
-                    priority_queue_.rebuild(calculator);
+                    if constexpr (requires(PQ& q) { q.rebuild(calculator); }) {
+                        priority_queue_.rebuild(calculator);
+                    }
                 }
                 // Continue searching for even better solutions
                 continue;
