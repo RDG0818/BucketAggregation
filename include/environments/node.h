@@ -7,40 +7,78 @@
 #include <vector>
 
 static constexpr uint32_t NODE_NULL = std::numeric_limits<uint32_t>::max();
-
-struct Node { // Fits in a cache line
-  uint32_t parent;
-  uint32_t g;
-  uint32_t h; 
-  uint32_t queue_ref; // Can store the heap index, next node index, or a sentinel value
-};
+static constexpr uint32_t INF_COST = std::numeric_limits<uint32_t>::max();
 
 class NodePool {
 
 public:
 
-  void reserve(uint32_t capacity) { // preallocate memory
-    nodes_.reserve(capacity);
+  NodePool() = default;
+
+  void prepare_for_search() {
+    search_iteration_++;
+    if (search_iteration_ == 0) {
+      std::fill(generated_at_.begin(), generated_at_.end(), 0);
+      search_iteration_ = 1;
+    }
   }
 
-  void clear() {
-    nodes_.clear(); 
+  void reserve(uint32_t capacity) {
+    g_costs_.reserve(capacity);
+    parents_.reserve(capacity);
+    generated_at_.reserve(capacity);
   }
 
-  uint32_t allocate(uint32_t parent, uint32_t g, uint32_t h) {
-    Node n = {parent, g, h, NODE_NULL};
-    nodes_.push_back(n);
-    return nodes_.size() - 1;
+  void resize_state_space(uint32_t size) {
+    g_costs_.resize(size, INF_COST);
+    parents_.resize(size, NODE_NULL);
+    generated_at_.resize(size, 0); // 0 means "never generated" relative to search_iteration_ >= 1
   }
 
-  Node& operator[](uint32_t h) { return nodes_[h]; }; // Write access
-  const Node& operator[](uint32_t h) const {return nodes_[h]; } // Read access
+  uint32_t create_new_state_id() {
+    uint32_t id = static_cast<uint32_t>(g_costs_.size());
+    g_costs_.push_back(INF_COST);
+    parents_.push_back(NODE_NULL);
+    generated_at_.push_back(0);
+    return id;
+  }
+
+  inline bool is_generated(uint32_t id) const {
+    return generated_at_[id] == search_iteration_;
+  }
+
+  inline void mark_generated(uint32_t id) {
+    generated_at_[id] = search_iteration_;
+
+    g_costs_[id] = INF_COST;
+    parents_[id] = NODE_NULL;
+  }
+
+  inline uint32_t get_g(uint32_t id) const {
+    if (generated_at_[id] != search_iteration_) return INF_COST;
+    return g_costs_[id];
+  }
+
+  inline void set_g(uint32_t id, uint32_t g) {
+    if (generated_at_[id] != search_iteration_) mark_generated(id);
+    g_costs_[id] = g;
+  }
+
+  inline uint32_t get_parent(uint32_t id) const {
+    if (generated_at_[id] != search_iteration_) return NODE_NULL;
+    return parents_[id];
+  }
+
+  inline void set_parent(uint32_t id, uint32_t parent) { parents_[id] = parent; }
   
-  uint32_t size() const { return nodes_.size(); }
+  uint32_t size() const { return static_cast<uint32_t>(g_costs_.size()); }
 
 private:
+  std::vector<uint32_t> g_costs_;
+  std::vector<uint32_t> parents_;
 
-  std::vector<Node> nodes_; // Nodes are stored contiguously
+  std::vector<uint32_t> generated_at_;
+  uint32_t search_iteration_ = 0;
 
 };
 

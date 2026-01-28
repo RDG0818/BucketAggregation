@@ -7,6 +7,8 @@ SlidingTileEnvironment::SlidingTileEnvironment(int instance_index, std::string f
 
   goal_state_ = 0x123456789ABCDEF0;
 
+  goal_id_ = get_or_create_id(goal_state_);
+
   std::ifstream file(filename);
   if (!file.is_open()) {
     throw std::runtime_error("Could not open benchmark file: " + filename);
@@ -36,37 +38,25 @@ SlidingTileEnvironment::SlidingTileEnvironment(int instance_index, std::string f
 }
 
 uint32_t SlidingTileEnvironment::get_start_node() {
-  uint32_t h_val = get_heuristic(start_state_);
-  uint32_t handle = pool_.allocate(NODE_NULL, 0, h_val);
-
-  node_states_.push_back(start_state_);
-  lookup_table_[start_state_] = handle;
-
-  return handle;
+  return get_or_create_id(start_state_);
 }
 
-uint32_t SlidingTileEnvironment::get_heuristic(T state) const { // Manhattan Distance
-  uint32_t h = 0;
-
-  for (int i = 0; i < 16; i++) {
-    int tile = get_tile(state, i);
-    if (tile == 0) continue;
-
-    int cx = i % 4;
-    int cy = i / 4;
-
-    int target_idx = tile - 1;
-    int tx = target_idx % 4;
-    int ty = target_idx / 4;
-
-    h += std::abs(cx - tx) + std::abs(cy - ty);
+uint32_t SlidingTileEnvironment::get_or_create_id(T state) {
+  auto it = lookup_table_.find(state);
+  if (it != lookup_table_.end()) {
+    return it->second;
   }
-  return h;
+
+  uint32_t new_id = pool_.create_new_state_id();
+  node_states_.push_back(state);
+  lookup_table_.insert({state, new_id});
+  return new_id;
 }
 
-void SlidingTileEnvironment::get_successors(uint32_t parent_handle, std::vector<uint32_t>& neighbors) {
-  const uint32_t parent_g = pool_[parent_handle].g;
-  const T parent_state = node_states_[parent_handle];
+void SlidingTileEnvironment::get_successors(uint32_t u_id, std::vector<uint32_t>& neighbors) {
+  neighbors.clear();
+
+  const T parent_state = node_states_[u_id];
   
   int blank_idx = -1;
   for (int i = 0; i < 16; i++) {
@@ -94,26 +84,6 @@ void SlidingTileEnvironment::get_successors(uint32_t parent_handle, std::vector<
 
     T n_state = parent_state ^ swap_mask;
 
-    uint32_t new_g = parent_g + 1;
-    auto it = lookup_table_.find(n_state);
-    if (it == lookup_table_.end()) {
-      // NEW NODE
-      uint32_t h_val = get_heuristic(n_state);
-      uint32_t n_handle = pool_.allocate(parent_handle, new_g, h_val);
-
-      lookup_table_.insert({n_state, n_handle});
-      node_states_.push_back(n_state);
-      neighbors.push_back(n_handle);
-    }
-    else {
-      // EXISTING NODE
-      uint32_t n_handle = it->second;
-      if (new_g < pool_[n_handle].g) {
-        pool_[n_handle].g = new_g;
-        pool_[n_handle].parent = parent_handle;
-        neighbors.push_back(n_handle);
-      }
-    }
-    
+    neighbors.push_back(get_or_create_id(n_state));
   }
 }

@@ -18,28 +18,18 @@ class GridEnvironment {
 
 public:
 
-  using T = uint32_t; 
-
   GridEnvironment(uint32_t w, uint32_t h, uint32_t seed = 42);
 
-  void get_successors(uint32_t node_index, std::vector<uint32_t>& neighbors);
-  uint32_t get_heuristic(T state_id) const { 
-    return (w_ - 1 - (state_id % w_)) + (h_ - 1 - (state_id / w_)); // Manhattan Distance
+  void reset_search() { pool_.prepare_for_search(); }
+
+  void get_successors(uint32_t u_id, std::vector<uint32_t>& neighbors);
+  inline uint32_t get_heuristic(uint32_t id) const { 
+    return (w_ - 1 - (id % w_)) + (h_ - 1 - (id / w_)); // Manhattan Distance
   }
-  bool is_goal(T state_id) const { return state_id == goal_id_; }
+  bool is_goal(uint32_t id) const { return id == goal_id_; }
 
-  T get_start_node() { // 0 indicates start state
-    uint32_t handle = pool_.allocate(NODE_NULL, 0, get_heuristic(0));
+  inline uint32_t get_edge_cost(uint32_t id) const { return grid_map_[id]; }
 
-    node_states_.push_back(0);
-    lookup_table_[0] = handle;
-    return handle;
-  }
-
-  uint8_t get_cell_cost(uint32_t state_id) const { return grid_map_[state_id]; }
-
-  T get_state(uint32_t node_handle) const { return node_states_[node_handle]; }
-  uint32_t get_node_handle(T state_id) const { return lookup_table_[state_id]; }
   NodePool& get_pool() { return pool_; }
   const NodePool& get_pool() const { return pool_; }
 
@@ -48,18 +38,17 @@ private:
   uint32_t w_;
   uint32_t h_;
   uint32_t goal_id_;
-
-  NodePool pool_;
-  std::vector<T> node_states_; // node_handle -> state_id
-  std::vector<uint32_t> lookup_table_; // state_id -> node_handle
   std::vector<uint8_t> grid_map_; // state_id -> cost
+  NodePool pool_;
+
 };
 
 class PancakeEnvironment {
 
 public:
 
-  using T = std::array<uint8_t, 48>;
+  static constexpr size_t N = 48;
+  using T = std::array<uint8_t, N>;
 
   // FNV-1a Hash
   struct StateHash {
@@ -75,23 +64,38 @@ public:
 
   PancakeEnvironment(uint32_t seed = 42, uint32_t capacity = 1e7);
 
-  void get_successors(uint32_t node_index, std::vector<uint32_t>& neighbors);
-  uint32_t get_heuristic(const T& state) const;
-  bool is_goal(const T& state) const { return state == goal_state_; };
+  void reset_serach() { pool_.prepare_for_search(); }
+
+  void get_successors(uint32_t u_id, std::vector<uint32_t>& neighbors);
+
+
+  inline uint32_t get_heuristic(uint32_t id) const {
+    const T& state = node_states_[id];
+    uint32_t gaps = 0;
+    
+    for (int i = 0; i < state.size() - 1; i++) {
+      int diff = std::abs((int)state[i] - (int)state[i+1]);
+      if (diff > 1) {
+        gaps++;
+      }
+    }
+    return gaps;
+  }
+
+  bool is_goal(uint32_t id) const { return id == goal_id_; };
 
   uint32_t get_start_node();
 
-  T get_state(uint32_t node_handle) const { return node_states_[node_handle]; }
-  uint32_t get_node_handle(const T& state) const { 
-    auto it = lookup_table_.find(state);
-    if (it != lookup_table_.end()) {
-      return it->second;
-    }
-    return NODE_NULL;
-  }
+  inline uint32_t get_edge_cost(uint32_t id) const { return 1; }
 
   NodePool& get_pool() { return pool_; }
   const NodePool& get_pool() const { return pool_; }
+
+  uint32_t generate_start_node();
+
+  const T& get_state(uint32_t id) const { return node_states_[id]; }
+
+  uint32_t get_or_create_id(const T& state);
 
 private:
 
@@ -103,6 +107,7 @@ private:
 
   T start_state_;
   T goal_state_;
+  uint32_t goal_id_;
 
 };
 
@@ -114,24 +119,45 @@ public:
 
   SlidingTileEnvironment(int instance_index, std::string filename, uint32_t capacity = 1000000);
 
-  void get_successors(uint32_t node_index, std::vector<uint32_t>& neighbors);
-  uint32_t get_heuristic(T state) const;
-  bool is_goal(T state) const { return state == goal_state_; };
+  void reset_search() { pool_.prepare_for_search(); }
+
+  void get_successors(uint32_t u_id, std::vector<uint32_t>& neighbors);
+
+  inline uint32_t get_heuristic(uint32_t id) const { // Manhattan Distance
+    T state = node_states_[id];
+    uint32_t h = 0;
+
+    for (int i = 0; i < 16; i++) {
+      int tile = get_tile(state, i);
+      if (tile == 0) continue;
+
+      int cx = i % 4;
+      int cy = i / 4;
+
+      int target_idx = tile - 1;
+      int tx = target_idx % 4;
+      int ty = target_idx / 4;
+
+      h += std::abs(cx - tx) + std::abs(cy - ty);
+    }
+    return h;
+  }
+
+
+
+  inline bool is_goal(uint32_t id) const { return id == goal_id_; };
+
+  inline uint32_t get_edge_cost(uint32_t id) const { return 1; }
+
+  NodePool& get_pool() {return pool_; }
+  const NodePool& get_pool() const { return pool_; }
 
   uint32_t get_start_node();
 
-  T get_state(uint32_t handle) const { return node_states_[handle]; };
-  uint32_t get_node_handle(T state) const { 
-    auto it = lookup_table_.find(state);
-    if (it != lookup_table_.end()) {
-      return it->second;
-    }
-    return NODE_NULL;
-  }
-
-  NodePool& get_pool() {return pool_; }
-
   inline uint8_t get_tile(T state, int index) const { return (state >> ((15 - index) * 4)) & 0xF; };
+
+  T get_state(uint32_t id) const { return node_states_[id]; }
+  uint32_t get_or_create_id(T state);
 
 private:
 
@@ -143,5 +169,6 @@ private:
 
   T start_state_;
   T goal_state_;
+  uint32_t goal_id_;
 
 };

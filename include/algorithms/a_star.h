@@ -13,32 +13,40 @@ public:
     : env_(env), priority_queue_(priority_queue), stats_(stats) {};
 
   void solve() {
+    env_.reset_search();
+    auto& pool = env_.get_pool();
     uint32_t start_node = env_.get_start_node();
-    const auto& start_node_data = env_.get_pool()[start_node];
-    priority_queue_.push(start_node, start_node_data.g + start_node_data.h);
+    uint32_t start_h = env_.get_heuristic(start_node);
+
+    pool.set_g(start_node, 0);
+    priority_queue_.push(start_node, 0 + start_h, start_h);
 
     std::vector<uint32_t> neighbors;
+    neighbors.reserve(16);
 
     while (!priority_queue_.empty()) {
-      uint32_t current_node = priority_queue_.pop();
-      if (stats_) {
-          stats_->nodes_expanded++;
-      }
+      uint32_t u = priority_queue_.pop();
+      if (stats_) { stats_->nodes_expanded++; }
 
-      if (env_.is_goal(env_.get_state(current_node))) {
+      if (env_.is_goal(u)) {
+        // Can construct path if needed
         return;
       }
 
-      neighbors.clear();
-      env_.get_successors(current_node, neighbors);
+      env_.get_successors(u, neighbors);
+      uint32_t u_g = pool.get_g(u);
 
-      for (uint32_t neighbor : neighbors) {
-        const auto& neighbor_data = env_.get_pool()[neighbor];
-        uint32_t priority = neighbor_data.g + neighbor_data.h;
-        if (priority_queue_.contains(neighbor)) {
-          priority_queue_.decrease_key(neighbor, priority);
-        } else {
-          priority_queue_.push(neighbor, priority);
+      for (uint32_t v : neighbors) {
+        uint32_t cost = env_.get_edge_cost(u, v);
+        uint32_t new_g = u_g + cost;
+
+        if (new_g < pool.get_g(v)) {
+          pool.set_g(v, new_g);
+          pool.set_parent(v, u);
+          uint32_t h = env_.get_heuristic(v);
+          priority_queue_.push(v, new_g + h, h);
+
+          if (stats_) stats_->nodes_generated++;
         }
       }
     }

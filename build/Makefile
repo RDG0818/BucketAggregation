@@ -185,19 +185,6 @@ core_lib/fast:
 .PHONY : core_lib/fast
 
 #=============================================================================
-# Target rules for targets named main
-
-# Build rule for target.
-main: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 main
-.PHONY : main
-
-# fast build rule for target.
-main/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/build
-.PHONY : main/fast
-
-#=============================================================================
 # Target rules for targets named tests
 
 # Build rule for target.
@@ -262,30 +249,6 @@ gtest_main/fast:
 	$(MAKE) $(MAKESILENT) -f googletest/googletest/CMakeFiles/gtest_main.dir/build.make googletest/googletest/CMakeFiles/gtest_main.dir/build
 .PHONY : gtest_main/fast
 
-src/bucket_queue.o: src/bucket_queue.cpp.o
-.PHONY : src/bucket_queue.o
-
-# target to build an object file
-src/bucket_queue.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/bucket_queue.cpp.o
-.PHONY : src/bucket_queue.cpp.o
-
-src/bucket_queue.i: src/bucket_queue.cpp.i
-.PHONY : src/bucket_queue.i
-
-# target to preprocess a source file
-src/bucket_queue.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/bucket_queue.cpp.i
-.PHONY : src/bucket_queue.cpp.i
-
-src/bucket_queue.s: src/bucket_queue.cpp.s
-.PHONY : src/bucket_queue.s
-
-# target to generate assembly for a file
-src/bucket_queue.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/bucket_queue.cpp.s
-.PHONY : src/bucket_queue.cpp.s
-
 src/grid_environment.o: src/grid_environment.cpp.o
 .PHONY : src/grid_environment.o
 
@@ -309,30 +272,6 @@ src/grid_environment.s: src/grid_environment.cpp.s
 src/grid_environment.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/grid_environment.cpp.s
 .PHONY : src/grid_environment.cpp.s
-
-src/main.o: src/main.cpp.o
-.PHONY : src/main.o
-
-# target to build an object file
-src/main.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/src/main.cpp.o
-.PHONY : src/main.cpp.o
-
-src/main.i: src/main.cpp.i
-.PHONY : src/main.i
-
-# target to preprocess a source file
-src/main.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/src/main.cpp.i
-.PHONY : src/main.cpp.i
-
-src/main.s: src/main.cpp.s
-.PHONY : src/main.s
-
-# target to generate assembly for a file
-src/main.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/src/main.cpp.s
-.PHONY : src/main.cpp.s
 
 src/pancake_environment.o: src/pancake_environment.cpp.o
 .PHONY : src/pancake_environment.o
@@ -406,54 +345,6 @@ tests/test_a_star.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_a_star.cpp.s
 .PHONY : tests/test_a_star.cpp.s
 
-tests/test_ana_star.o: tests/test_ana_star.cpp.o
-.PHONY : tests/test_ana_star.o
-
-# target to build an object file
-tests/test_ana_star.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_ana_star.cpp.o
-.PHONY : tests/test_ana_star.cpp.o
-
-tests/test_ana_star.i: tests/test_ana_star.cpp.i
-.PHONY : tests/test_ana_star.i
-
-# target to preprocess a source file
-tests/test_ana_star.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_ana_star.cpp.i
-.PHONY : tests/test_ana_star.cpp.i
-
-tests/test_ana_star.s: tests/test_ana_star.cpp.s
-.PHONY : tests/test_ana_star.s
-
-# target to generate assembly for a file
-tests/test_ana_star.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_ana_star.cpp.s
-.PHONY : tests/test_ana_star.cpp.s
-
-tests/test_awa.o: tests/test_awa.cpp.o
-.PHONY : tests/test_awa.o
-
-# target to build an object file
-tests/test_awa.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_awa.cpp.o
-.PHONY : tests/test_awa.cpp.o
-
-tests/test_awa.i: tests/test_awa.cpp.i
-.PHONY : tests/test_awa.i
-
-# target to preprocess a source file
-tests/test_awa.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_awa.cpp.i
-.PHONY : tests/test_awa.cpp.i
-
-tests/test_awa.s: tests/test_awa.cpp.s
-.PHONY : tests/test_awa.s
-
-# target to generate assembly for a file
-tests/test_awa.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_awa.cpp.s
-.PHONY : tests/test_awa.cpp.s
-
 tests/test_binary_heap.o: tests/test_binary_heap.cpp.o
 .PHONY : tests/test_binary_heap.o
 
@@ -477,54 +368,6 @@ tests/test_binary_heap.s: tests/test_binary_heap.cpp.s
 tests/test_binary_heap.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_binary_heap.cpp.s
 .PHONY : tests/test_binary_heap.cpp.s
-
-tests/test_bucket_heap.o: tests/test_bucket_heap.cpp.o
-.PHONY : tests/test_bucket_heap.o
-
-# target to build an object file
-tests/test_bucket_heap.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_bucket_heap.cpp.o
-.PHONY : tests/test_bucket_heap.cpp.o
-
-tests/test_bucket_heap.i: tests/test_bucket_heap.cpp.i
-.PHONY : tests/test_bucket_heap.i
-
-# target to preprocess a source file
-tests/test_bucket_heap.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_bucket_heap.cpp.i
-.PHONY : tests/test_bucket_heap.cpp.i
-
-tests/test_bucket_heap.s: tests/test_bucket_heap.cpp.s
-.PHONY : tests/test_bucket_heap.s
-
-# target to generate assembly for a file
-tests/test_bucket_heap.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_bucket_heap.cpp.s
-.PHONY : tests/test_bucket_heap.cpp.s
-
-tests/test_bucket_queue.o: tests/test_bucket_queue.cpp.o
-.PHONY : tests/test_bucket_queue.o
-
-# target to build an object file
-tests/test_bucket_queue.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_bucket_queue.cpp.o
-.PHONY : tests/test_bucket_queue.cpp.o
-
-tests/test_bucket_queue.i: tests/test_bucket_queue.cpp.i
-.PHONY : tests/test_bucket_queue.i
-
-# target to preprocess a source file
-tests/test_bucket_queue.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_bucket_queue.cpp.i
-.PHONY : tests/test_bucket_queue.cpp.i
-
-tests/test_bucket_queue.s: tests/test_bucket_queue.cpp.s
-.PHONY : tests/test_bucket_queue.s
-
-# target to generate assembly for a file
-tests/test_bucket_queue.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_bucket_queue.cpp.s
-.PHONY : tests/test_bucket_queue.cpp.s
 
 tests/test_grid_environment.o: tests/test_grid_environment.cpp.o
 .PHONY : tests/test_grid_environment.o
@@ -616,17 +459,10 @@ help:
 	@echo "... gmock_main"
 	@echo "... gtest"
 	@echo "... gtest_main"
-	@echo "... main"
 	@echo "... tests"
-	@echo "... src/bucket_queue.o"
-	@echo "... src/bucket_queue.i"
-	@echo "... src/bucket_queue.s"
 	@echo "... src/grid_environment.o"
 	@echo "... src/grid_environment.i"
 	@echo "... src/grid_environment.s"
-	@echo "... src/main.o"
-	@echo "... src/main.i"
-	@echo "... src/main.s"
 	@echo "... src/pancake_environment.o"
 	@echo "... src/pancake_environment.i"
 	@echo "... src/pancake_environment.s"
@@ -636,21 +472,9 @@ help:
 	@echo "... tests/test_a_star.o"
 	@echo "... tests/test_a_star.i"
 	@echo "... tests/test_a_star.s"
-	@echo "... tests/test_ana_star.o"
-	@echo "... tests/test_ana_star.i"
-	@echo "... tests/test_ana_star.s"
-	@echo "... tests/test_awa.o"
-	@echo "... tests/test_awa.i"
-	@echo "... tests/test_awa.s"
 	@echo "... tests/test_binary_heap.o"
 	@echo "... tests/test_binary_heap.i"
 	@echo "... tests/test_binary_heap.s"
-	@echo "... tests/test_bucket_heap.o"
-	@echo "... tests/test_bucket_heap.i"
-	@echo "... tests/test_bucket_heap.s"
-	@echo "... tests/test_bucket_queue.o"
-	@echo "... tests/test_bucket_queue.i"
-	@echo "... tests/test_bucket_queue.s"
 	@echo "... tests/test_grid_environment.o"
 	@echo "... tests/test_grid_environment.i"
 	@echo "... tests/test_grid_environment.s"
