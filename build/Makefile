@@ -417,6 +417,30 @@ tests/test_binary_heap.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_binary_heap.cpp.s
 .PHONY : tests/test_binary_heap.cpp.s
 
+tests/test_bucket_heap.o: tests/test_bucket_heap.cpp.o
+.PHONY : tests/test_bucket_heap.o
+
+# target to build an object file
+tests/test_bucket_heap.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_bucket_heap.cpp.o
+.PHONY : tests/test_bucket_heap.cpp.o
+
+tests/test_bucket_heap.i: tests/test_bucket_heap.cpp.i
+.PHONY : tests/test_bucket_heap.i
+
+# target to preprocess a source file
+tests/test_bucket_heap.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_bucket_heap.cpp.i
+.PHONY : tests/test_bucket_heap.cpp.i
+
+tests/test_bucket_heap.s: tests/test_bucket_heap.cpp.s
+.PHONY : tests/test_bucket_heap.s
+
+# target to generate assembly for a file
+tests/test_bucket_heap.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_bucket_heap.cpp.s
+.PHONY : tests/test_bucket_heap.cpp.s
+
 tests/test_bucket_queue.o: tests/test_bucket_queue.cpp.o
 .PHONY : tests/test_bucket_queue.o
 
@@ -464,6 +488,30 @@ tests/test_grid_environment.s: tests/test_grid_environment.cpp.s
 tests/test_grid_environment.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_grid_environment.cpp.s
 .PHONY : tests/test_grid_environment.cpp.s
+
+tests/test_indexed_binary_heap.o: tests/test_indexed_binary_heap.cpp.o
+.PHONY : tests/test_indexed_binary_heap.o
+
+# target to build an object file
+tests/test_indexed_binary_heap.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_indexed_binary_heap.cpp.o
+.PHONY : tests/test_indexed_binary_heap.cpp.o
+
+tests/test_indexed_binary_heap.i: tests/test_indexed_binary_heap.cpp.i
+.PHONY : tests/test_indexed_binary_heap.i
+
+# target to preprocess a source file
+tests/test_indexed_binary_heap.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_indexed_binary_heap.cpp.i
+.PHONY : tests/test_indexed_binary_heap.cpp.i
+
+tests/test_indexed_binary_heap.s: tests/test_indexed_binary_heap.cpp.s
+.PHONY : tests/test_indexed_binary_heap.s
+
+# target to generate assembly for a file
+tests/test_indexed_binary_heap.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_indexed_binary_heap.cpp.s
+.PHONY : tests/test_indexed_binary_heap.cpp.s
 
 tests/test_pancake_environment.o: tests/test_pancake_environment.cpp.o
 .PHONY : tests/test_pancake_environment.o
@@ -577,12 +625,18 @@ help:
 	@echo "... tests/test_binary_heap.o"
 	@echo "... tests/test_binary_heap.i"
 	@echo "... tests/test_binary_heap.s"
+	@echo "... tests/test_bucket_heap.o"
+	@echo "... tests/test_bucket_heap.i"
+	@echo "... tests/test_bucket_heap.s"
 	@echo "... tests/test_bucket_queue.o"
 	@echo "... tests/test_bucket_queue.i"
 	@echo "... tests/test_bucket_queue.s"
 	@echo "... tests/test_grid_environment.o"
 	@echo "... tests/test_grid_environment.i"
 	@echo "... tests/test_grid_environment.s"
+	@echo "... tests/test_indexed_binary_heap.o"
+	@echo "... tests/test_indexed_binary_heap.i"
+	@echo "... tests/test_indexed_binary_heap.s"
 	@echo "... tests/test_pancake_environment.o"
 	@echo "... tests/test_pancake_environment.i"
 	@echo "... tests/test_pancake_environment.s"

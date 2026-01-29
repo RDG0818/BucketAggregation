@@ -49,7 +49,42 @@ The framework strictly enforces a separation of concerns to maximize modularity 
 
     Optimization: This removes the need for expensive hash map lookups inside the queue operations.
 
-📦 Data Structures
+🛠️ Utilities
+
+    SearchStats: A comprehensive struct tracking micro-benchmarks (enqueue/dequeue times in nanoseconds) and macro-metrics (nodes expanded, solution cost).
+
+    ProfiledQueue: A wrapper class that uses std::chrono and SFINAE (Substitution Failure Is Not An Error) to transparently profile any queue implementation without modifying the algorithm code.
+
+## Overview
+
+### Algorithms
+
+**A\***: The standard for optimal pathfinding.
+
+    Implementation: Standard best-first search.
+
+    Optimizations: Uses an optimized heuristic inlining and the SoA NodePool for fast G-value lookups.
+
+**Anytime A\***: An anytime variant that quickly finds a suboptimal solution and iteratively improves it.
+
+    Behavior: Uses a "window" size (implicitly handled by the queue or weight) to prune nodes that cannot improve upon the current best solution (incumbent).
+
+    Optimizations: Implements incumbent pruning: any node with F≥Gbest​ is discarded immediately.
+
+3. ANA* (Anytime Non-parametric A*)
+
+An anytime algorithm that removes the need for tuning parameters (like weights).
+
+    Priority Function: Maximizes E(n)=h(n)Gupper​−g(n)​. This effectively greedily expands nodes most likely to improve the current solution.
+
+    Rebuild Mechanism: When a better solution (Gupper​) is found, the priority of every node in the open list changes.
+
+    Optimization: Instead of clearing and re-inserting, the queue supports an in-place O(N) rebuild() operation that recalculates priorities and heapifies the backing vector in a single pass.
+
+
+
+### Data Structures
+
 1. Binary Heap (BinaryHeap)
 
 A standard array-based binary heap.
@@ -90,19 +125,9 @@ A specialized queue designed to handle Tie-Breaking by H efficiently.
 
         Embedded Vectors: Secondary buckets are embedded directly in the Primary struct to avoid double-indirection.
 
-4. Flat Map (FlatMap)
 
-A specialized open-addressing hash map used in explicit graph environments (like Sliding Tile) to map state hashes to Node IDs.
+### Environments
 
-    Optimizations:
-
-        Open Addressing: Uses linear probing in a single flat array. Zero pointer chasing.
-
-        Power-of-Two Sizing: Allows fast bitwise masking (hash & mask) instead of slow modulo (% size) operations.
-
-        No Allocations: Unlike std::unordered_map, it does not allocate memory per insertion.
-
-🌍 Environments
 1. Grid Environment (Implicit)
 
 A standard 4-connected grid map.
@@ -123,8 +148,6 @@ The classic 15-puzzle.
 
     Optimizations:
 
-        Zobrist Hashing: Uses Incremental Hashing. The hash of a child state is computed in O(1) via XOR operations, avoiding the need to read the entire board state.
-
         Bit-Packing: States are packed into uint64_t for efficient storage and copying.
 
 3. Pancake Puzzle (Explicit)
@@ -135,47 +158,6 @@ A permutation puzzle where a spatula flips a prefix of the sequence.
 
     Optimizations: Uses the Gap Heuristic to estimate distance to the sorted state.
 
-🛠️ Utilities
-
-    SearchStats: A comprehensive struct tracking micro-benchmarks (enqueue/dequeue times in nanoseconds) and macro-metrics (nodes expanded, solution cost).
-
-    ProfiledQueue: A wrapper class that uses std::chrono and SFINAE (Substitution Failure Is Not An Error) to transparently profile any queue implementation without modifying the algorithm code.
-
-## Overview
-
-### Algorithms
-
-1. A* 
-
-The standard for optimal pathfinding.
-
-    Implementation: Standard best-first search.
-
-    Optimizations: Uses an optimized heuristic inlining and the SoA NodePool for fast G-value lookups.
-
-2. Anytime A*
-
-An anytime variant that quickly finds a suboptimal solution and iteratively improves it.
-
-    Behavior: Uses a "window" size (implicitly handled by the queue or weight) to prune nodes that cannot improve upon the current best solution (incumbent).
-
-    Optimizations: Implements incumbent pruning: any node with F≥Gbest​ is discarded immediately.
-
-3. ANA* (Anytime Non-parametric A*)
-
-An anytime algorithm that removes the need for tuning parameters (like weights).
-
-    Priority Function: Maximizes E(n)=h(n)Gupper​−g(n)​. This effectively greedily expands nodes most likely to improve the current solution.
-
-    Rebuild Mechanism: When a better solution (Gupper​) is found, the priority of every node in the open list changes.
-
-    Optimization: Instead of clearing and re-inserting, the queue supports an in-place O(N) rebuild() operation that recalculates priorities and heapifies the backing vector in a single pass.
-
-
-
-### Data Structures
-
-### Environments
 
 ### Architecture
 

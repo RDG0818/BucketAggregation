@@ -65,7 +65,7 @@ public:
     auto& p_bucket = f_buckets_[f_min_];
 
     while (p_bucket.h_min < p_bucket.h_buckets.size() &&
-           (!p_bucket.h_buckets[p_bucket.h_min] || p_bucket.h_buckets[p_bucket.h_min]->empty())) {
+          (!p_bucket.h_buckets[p_bucket.h_min] || p_bucket.h_buckets[p_bucket.h_min]->empty())) {
         p_bucket.h_min++;
     }
     
@@ -74,6 +74,47 @@ public:
 
     p_bucket.count--;
     count_--;
+
+
+    if (p_bucket.count > 0 && p_bucket.h_buckets[p_bucket.h_min]->empty()) {
+      while (p_bucket.h_min < p_bucket.h_buckets.size() &&
+        (!p_bucket.h_buckets[p_bucket.h_min] || p_bucket.h_buckets[p_bucket.h_min]->empty())) {
+        p_bucket.h_min++;
+      }
+    }
+
+
+    return id;
+  }
+
+  uint32_t pop_from(uint32_t f) {
+    if (f >= f_buckets_.size() || f_buckets_[f].count == 0) {
+      return NODE_NULL;
+    }
+
+    auto& p_bucket = f_buckets_[f];
+
+    while (p_bucket.h_min < p_bucket.h_buckets.size() && 
+          (!p_bucket.h_buckets[p_bucket.h_min] || p_bucket.h_buckets[p_bucket.h_min]->empty())) {
+      p_bucket.h_min++;
+    }
+
+    if (p_bucket.h_min >= p_bucket.h_buckets.size()) {
+      return NODE_NULL;
+    }
+
+    uint32_t id = p_bucket.h_buckets[p_bucket.h_min]->back();
+    p_bucket.h_buckets[p_bucket.h_min]->pop_back();
+
+    p_bucket.count--;
+    count_--;
+
+    if (p_bucket.count > 0 && p_bucket.h_buckets[p_bucket.h_min]->empty()) {
+      while (p_bucket.h_min < p_bucket.h_buckets.size() &&
+        (!p_bucket.h_buckets[p_bucket.h_min] || p_bucket.h_buckets[p_bucket.h_min]->empty())) {
+        p_bucket.h_min++;
+      }
+    }
 
     return id;
   }

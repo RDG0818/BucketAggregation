@@ -131,3 +131,27 @@ TEST_F(TwoLevelBucketQueueTest, EmptySkipLogic) {
   // Pop needs to scan forward.
   EXPECT_EQ(queue->pop(), 2);
 }
+
+TEST_F(TwoLevelBucketQueueTest, PopFromSpecificBucket) {
+
+  uint32_t n_f10_h5 = 1;
+  uint32_t n_f10_h2 = 2; // Best in F=10 bucket
+  uint32_t n_f20_h1 = 3; // Best in F=20 bucket (but worse globally by F)
+
+  queue->push(n_f10_h5, 10, 5);
+  queue->push(n_f10_h2, 10, 2);
+  queue->push(n_f20_h1, 20, 1);
+
+  EXPECT_EQ(queue->pop_from(20), n_f20_h1);
+
+  EXPECT_EQ(queue->pop_from(20), std::numeric_limits<uint32_t>::max());
+
+  EXPECT_EQ(queue->pop_from(10), n_f10_h2);
+  EXPECT_EQ(queue->pop_from(10), n_f10_h5);
+
+  EXPECT_EQ(queue->pop_from(10), std::numeric_limits<uint32_t>::max());
+
+  EXPECT_TRUE(queue->empty());
+
+  EXPECT_EQ(queue->pop_from(999), std::numeric_limits<uint32_t>::max());
+}

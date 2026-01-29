@@ -11,7 +11,6 @@ set(SRC_FILES
 src/grid_environment.cpp 
 src/pancake_environment.cpp 
 src/sliding_tile_environment.cpp 
-#src/bucket_queue.cpp
 )
 add_library(core_lib ${SRC_FILES})
 
@@ -29,8 +28,9 @@ tests/test_grid_environment.cpp
 tests/test_pancake_environment.cpp 
 tests/test_sliding_tile_environment.cpp
 tests/test_binary_heap.cpp
+tests/test_indexed_binary_heap.cpp
 tests/test_bucket_queue.cpp
-#tests/test_bucket_heap.cpp
+tests/test_bucket_heap.cpp
 tests/test_a_star.cpp
 tests/test_anytime_a_star.cpp
 tests/test_ana_star.cpp
