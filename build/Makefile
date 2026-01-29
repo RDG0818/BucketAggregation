@@ -185,6 +185,19 @@ core_lib/fast:
 .PHONY : core_lib/fast
 
 #=============================================================================
+# Target rules for targets named main
+
+# Build rule for target.
+main: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 main
+.PHONY : main
+
+# fast build rule for target.
+main/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/build
+.PHONY : main/fast
+
+#=============================================================================
 # Target rules for targets named tests
 
 # Build rule for target.
@@ -272,6 +285,30 @@ src/grid_environment.s: src/grid_environment.cpp.s
 src/grid_environment.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/grid_environment.cpp.s
 .PHONY : src/grid_environment.cpp.s
+
+src/main.o: src/main.cpp.o
+.PHONY : src/main.o
+
+# target to build an object file
+src/main.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/src/main.cpp.o
+.PHONY : src/main.cpp.o
+
+src/main.i: src/main.cpp.i
+.PHONY : src/main.i
+
+# target to preprocess a source file
+src/main.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/src/main.cpp.i
+.PHONY : src/main.cpp.i
+
+src/main.s: src/main.cpp.s
+.PHONY : src/main.s
+
+# target to generate assembly for a file
+src/main.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/src/main.cpp.s
+.PHONY : src/main.cpp.s
 
 src/pancake_environment.o: src/pancake_environment.cpp.o
 .PHONY : src/pancake_environment.o
@@ -603,10 +640,14 @@ help:
 	@echo "... gmock_main"
 	@echo "... gtest"
 	@echo "... gtest_main"
+	@echo "... main"
 	@echo "... tests"
 	@echo "... src/grid_environment.o"
 	@echo "... src/grid_environment.i"
 	@echo "... src/grid_environment.s"
+	@echo "... src/main.o"
+	@echo "... src/main.i"
+	@echo "... src/main.s"
 	@echo "... src/pancake_environment.o"
 	@echo "... src/pancake_environment.i"
 	@echo "... src/pancake_environment.s"

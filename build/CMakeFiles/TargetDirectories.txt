@@ -1,4 +1,5 @@
 /home/ryan/BucketHeap/build/CMakeFiles/core_lib.dir
+/home/ryan/BucketHeap/build/CMakeFiles/main.dir
 /home/ryan/BucketHeap/build/CMakeFiles/tests.dir
 /home/ryan/BucketHeap/build/CMakeFiles/test.dir
 /home/ryan/BucketHeap/build/CMakeFiles/edit_cache.dir

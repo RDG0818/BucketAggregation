@@ -49,7 +49,7 @@ class PancakeEnvironment {
 
 public:
 
-  static constexpr size_t N = 48;
+  static constexpr size_t N = 20;
   using T = std::array<uint8_t, N>;
 
   // FNV-1a Hash
@@ -75,11 +75,14 @@ public:
     const T& state = node_states_[id];
     uint32_t gaps = 0;
     
-    for (int i = 0; i < state.size() - 1; i++) {
+    for (size_t i = 0; i < state.size() - 1; i++) {
       int diff = std::abs((int)state[i] - (int)state[i+1]);
       if (diff > 1) {
         gaps++;
       }
+    }
+    if (gaps == 0 && !is_goal(id)) {
+        return 1;
     }
     return gaps;
   }
@@ -88,7 +91,7 @@ public:
 
   uint32_t get_start_node();
 
-  inline uint32_t get_edge_cost(uint32_t id) const { return 1; }
+  inline uint32_t get_edge_cost(uint32_t u, uint32_t v) const { return 1; }
 
   NodePool& get_pool() { return pool_; }
   const NodePool& get_pool() const { return pool_; }
@@ -149,7 +152,7 @@ public:
 
   inline bool is_goal(uint32_t id) const { return id == goal_id_; };
 
-  inline uint32_t get_edge_cost(uint32_t id) const { return 1; }
+  inline uint32_t get_edge_cost(uint32_t u, uint32_t v) const { return 1; }
 
   NodePool& get_pool() {return pool_; }
   const NodePool& get_pool() const { return pool_; }

@@ -18,12 +18,12 @@ PancakeEnvironment::PancakeEnvironment(uint32_t seed, uint32_t capacity) : capac
 }
 
 uint32_t PancakeEnvironment::generate_start_node() {
-  T start_state = goal_state_;
+  start_state_ = goal_state_;
 
   std::mt19937 g(42);
-  std::shuffle(start_state.begin(), start_state.end(), g);
+  std::shuffle(start_state_.begin(), start_state_.end(), g);
 
-  return get_or_create_id(start_state);
+  return get_or_create_id(start_state_);
 }
 
 uint32_t PancakeEnvironment::get_or_create_id(const T& state) {

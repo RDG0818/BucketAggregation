@@ -29,6 +29,7 @@ public:
       if (stats_) { stats_->nodes_expanded++; }
 
       if (env_.is_goal(u)) {
+        if (stats_) { stats_->solution_cost = pool.get_g(u); }
         // Can construct path if needed
         return;
       }

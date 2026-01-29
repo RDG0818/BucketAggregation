@@ -45,6 +45,7 @@ public:
 
       if (env_.is_goal(u)) {
         incumbent_cost = u_g;
+        if (stats_) { stats_->solution_cost = incumbent_cost; }
         continue;
       }
 
