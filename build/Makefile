@@ -345,6 +345,54 @@ tests/test_a_star.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_a_star.cpp.s
 .PHONY : tests/test_a_star.cpp.s
 
+tests/test_ana_star.o: tests/test_ana_star.cpp.o
+.PHONY : tests/test_ana_star.o
+
+# target to build an object file
+tests/test_ana_star.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_ana_star.cpp.o
+.PHONY : tests/test_ana_star.cpp.o
+
+tests/test_ana_star.i: tests/test_ana_star.cpp.i
+.PHONY : tests/test_ana_star.i
+
+# target to preprocess a source file
+tests/test_ana_star.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_ana_star.cpp.i
+.PHONY : tests/test_ana_star.cpp.i
+
+tests/test_ana_star.s: tests/test_ana_star.cpp.s
+.PHONY : tests/test_ana_star.s
+
+# target to generate assembly for a file
+tests/test_ana_star.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_ana_star.cpp.s
+.PHONY : tests/test_ana_star.cpp.s
+
+tests/test_awa.o: tests/test_awa.cpp.o
+.PHONY : tests/test_awa.o
+
+# target to build an object file
+tests/test_awa.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_awa.cpp.o
+.PHONY : tests/test_awa.cpp.o
+
+tests/test_awa.i: tests/test_awa.cpp.i
+.PHONY : tests/test_awa.i
+
+# target to preprocess a source file
+tests/test_awa.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_awa.cpp.i
+.PHONY : tests/test_awa.cpp.i
+
+tests/test_awa.s: tests/test_awa.cpp.s
+.PHONY : tests/test_awa.s
+
+# target to generate assembly for a file
+tests/test_awa.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_awa.cpp.s
+.PHONY : tests/test_awa.cpp.s
+
 tests/test_binary_heap.o: tests/test_binary_heap.cpp.o
 .PHONY : tests/test_binary_heap.o
 
@@ -368,6 +416,30 @@ tests/test_binary_heap.s: tests/test_binary_heap.cpp.s
 tests/test_binary_heap.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_binary_heap.cpp.s
 .PHONY : tests/test_binary_heap.cpp.s
+
+tests/test_bucket_queue.o: tests/test_bucket_queue.cpp.o
+.PHONY : tests/test_bucket_queue.o
+
+# target to build an object file
+tests/test_bucket_queue.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_bucket_queue.cpp.o
+.PHONY : tests/test_bucket_queue.cpp.o
+
+tests/test_bucket_queue.i: tests/test_bucket_queue.cpp.i
+.PHONY : tests/test_bucket_queue.i
+
+# target to preprocess a source file
+tests/test_bucket_queue.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_bucket_queue.cpp.i
+.PHONY : tests/test_bucket_queue.cpp.i
+
+tests/test_bucket_queue.s: tests/test_bucket_queue.cpp.s
+.PHONY : tests/test_bucket_queue.s
+
+# target to generate assembly for a file
+tests/test_bucket_queue.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tests.dir/build.make CMakeFiles/tests.dir/tests/test_bucket_queue.cpp.s
+.PHONY : tests/test_bucket_queue.cpp.s
 
 tests/test_grid_environment.o: tests/test_grid_environment.cpp.o
 .PHONY : tests/test_grid_environment.o
@@ -472,9 +544,18 @@ help:
 	@echo "... tests/test_a_star.o"
 	@echo "... tests/test_a_star.i"
 	@echo "... tests/test_a_star.s"
+	@echo "... tests/test_ana_star.o"
+	@echo "... tests/test_ana_star.i"
+	@echo "... tests/test_ana_star.s"
+	@echo "... tests/test_awa.o"
+	@echo "... tests/test_awa.i"
+	@echo "... tests/test_awa.s"
 	@echo "... tests/test_binary_heap.o"
 	@echo "... tests/test_binary_heap.i"
 	@echo "... tests/test_binary_heap.s"
+	@echo "... tests/test_bucket_queue.o"
+	@echo "... tests/test_bucket_queue.i"
+	@echo "... tests/test_bucket_queue.s"
 	@echo "... tests/test_grid_environment.o"
 	@echo "... tests/test_grid_environment.i"
 	@echo "... tests/test_grid_environment.s"

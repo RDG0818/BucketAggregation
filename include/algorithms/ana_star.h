@@ -9,102 +9,87 @@ template <typename E, typename PQ>
 class ANAStar {
 
 public:
-    ANAStar(E& env, PQ& priority_queue, utils::SearchStats* stats = nullptr) 
-        : env_(env), priority_queue_(priority_queue), stats_(stats), G_upper_(std::numeric_limits<double>::max()) {};
+  ANAStar(E& env, PQ& priority_queue, utils::SearchStats* stats = nullptr) 
+    : env_(env), priority_queue_(priority_queue), stats_(stats), G_upper_(std::numeric_limits<double>::max()) {};
 
-    void solve() {
-        uint32_t start_node_handle = env_.get_start_node();
-        const auto& start_node_data = env_.get_pool()[start_node_handle];
         
-        if (env_.is_goal(env_.get_state(start_node_handle))) {
-            G_upper_ = start_node_data.g;
-            if (stats_) stats_->solution_cost = G_upper_;
-            return;
+void solve() {
+  env_.reset_search();
+  auto& pool = env_.get_pool();
+  uint32_t start_node = env_.get_start_node();
+
+  uint32_t start_h = env_.get_heuristic(start_node);
+  pool.set_g(start_node, 0);
+
+  priority_queue_.push(start_node, calculate_e(0, start_h), start_h);
+
+  std::vector<uint32_t> neighbors;
+  neighbors.reserve(16);
+
+  while (!priority_queue_.empty()) {
+
+    uint32_t u = priority_queue_.pop();
+
+    if (stats_) stats_->nodes_expanded++;
+
+    uint32_t u_g = pool.get_g(u);
+    uint32_t u_h = env_.get_heuristic(u);
+
+    if (static_cast<double>(u_g) + u_h >= G_upper_) continue; 
+    
+
+    if (env_.is_goal(u)) {
+      if (u_g < G_upper_) {
+        G_upper_ = static_cast<double>(u_g);
+        if (stats_) stats_->solution_cost = G_upper_;
+
+          auto calculator = [&](uint32_t id) -> double {
+            return calculate_e(pool.get_g(id), env_.get_heuristic(id));
+          };
+          priority_queue_.rebuild(calculator);
         }
-
-        // Define the priority calculator
-        auto calculator = [&](uint32_t handle) -> double {
-            const auto& node = env_.get_pool()[handle];
-            return calculate_e(node.g, node.h);
-        };
-
-        // Pass the calculator to the queue if it supports it (for BucketHeap)
-        if constexpr (requires(PQ& q) { q.set_priority_calculator(calculator); }) {
-            priority_queue_.set_priority_calculator(calculator);
-        }
-
-        double start_e = calculator(start_node_handle);
-        priority_queue_.push(start_node_handle, start_e);
-
-        std::vector<uint32_t> neighbors;
-
-        while (!priority_queue_.empty()) {
-            uint32_t current_node_handle = priority_queue_.pop();
-            const auto& current_node_data = env_.get_pool()[current_node_handle];
-
-            // If a node's optimistic cost is no better than our incumbent, it can't lead to an improved solution.
-            if (current_node_data.g + current_node_data.h >= G_upper_) {
-                continue;
-            }
-            if (stats_) {
-                stats_->nodes_expanded++;
-            }
-
-            if (env_.is_goal(env_.get_state(current_node_handle))) {
-                if (current_node_data.g < G_upper_) {
-                    // Found a new, better solution. Update the upper bound.
-                    G_upper_ = current_node_data.g;
-                    if (stats_) stats_->solution_cost = G_upper_;
-
-                    // Rebuild the entire heap with new e-values based on the new G_upper
-                    if constexpr (requires(PQ& q) { q.rebuild(calculator); }) {
-                        priority_queue_.rebuild(calculator);
-                    }
-                }
-                // Continue searching for even better solutions
-                continue;
-            }
-
-            neighbors.clear();
-            env_.get_successors(current_node_handle, neighbors);
-
-            for (uint32_t neighbor_handle : neighbors) {
-                const auto& neighbor_data = env_.get_pool()[neighbor_handle];
-                
-                // Pruning Step: Don't expand nodes that can't possibly beat the incumbent solution.
-                if (neighbor_data.g + neighbor_data.h >= G_upper_) {
-                    continue;
-                }
-
-                double neighbor_e = calculate_e(neighbor_data.g, neighbor_data.h);
-
-                if (priority_queue_.contains(neighbor_handle)) {
-                    // A better path to this node was found, so its e-value increases.
-                    // The 'decrease_key' method performs the required sift-up in the max-heap.
-                    priority_queue_.decrease_key(neighbor_handle, neighbor_e);
-                } else {
-                    priority_queue_.push(neighbor_handle, neighbor_e);
-                }
-            }
-        }
+      continue;
     }
+
+    env_.get_successors(u, neighbors);
+
+    for (uint32_t v : neighbors) {
+      uint32_t cost = env_.get_edge_cost(u, v);
+      uint32_t new_g = u_g + cost;
+      uint32_t v_h = env_.get_heuristic(v);
+
+      if (static_cast<double>(new_g) + v_h >= G_upper_) {
+        continue;
+      }
+
+      if (new_g < pool.get_g(v)) {
+        pool.set_g(v, new_g);
+        pool.set_parent(v, u);
+                    
+        if (stats_) stats_->nodes_generated++;
+                    
+        double e_val = calculate_e(new_g, v_h);
+        priority_queue_.push(v, e_val, v_h);
+      }
+    }
+  }
+}
 
 private:
-    // Calculates the e-value for a given node's g and h values.
-    double calculate_e(uint32_t g, uint32_t h) const {
-        if (h == 0) {
-            // Goal nodes should always have the highest priority
-            return std::numeric_limits<double>::max();
-        }
-        if (g >= G_upper_) {
-            // Nodes that are already more expensive than the best solution have no promise
-            return std::numeric_limits<double>::lowest();
-        }
-        return (G_upper_ - g) / static_cast<double>(h);
-    }
 
-    E& env_;
-    PQ& priority_queue_;
-    utils::SearchStats* stats_;
-    double G_upper_;
+  double calculate_e(uint32_t g, uint32_t h) const {
+    if (h == 0) {
+      return std::numeric_limits<double>::max(); // Max priority for goals
+    }
+    if (g >= G_upper_) {
+      return std::numeric_limits<double>::lowest(); // Pruned
+    }
+    return (G_upper_ - static_cast<double>(g)) / static_cast<double>(h);
+  }
+
+  E& env_;
+  PQ& priority_queue_;
+  utils::SearchStats* stats_;
+  double G_upper_;
+
 };

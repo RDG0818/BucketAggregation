@@ -30,11 +30,11 @@ tests/test_grid_environment.cpp
 tests/test_pancake_environment.cpp 
 tests/test_sliding_tile_environment.cpp
 tests/test_binary_heap.cpp
-#tests/test_bucket_queue.cpp
+tests/test_bucket_queue.cpp
 #tests/test_bucket_heap.cpp
 tests/test_a_star.cpp
-#tests/test_awa.cpp
-#tests/test_ana_star.cpp
+tests/test_awa.cpp
+tests/test_ana_star.cpp
 #tests/test_two_level_bucket_queue.cpp
 )
 target_link_libraries(tests PRIVATE core_lib gtest_main)

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "utils/utils.h"
+#include "environments/node.h"
 
 #include <vector>
 #include <limits>
@@ -47,7 +48,7 @@ public:
         continue;
       }
 
-      env_.get_successors(current_node, neighbors);
+      env_.get_successors(u, neighbors);
 
       for (uint32_t v : neighbors) {
         uint32_t cost = env_.get_edge_cost(u, v);
@@ -64,7 +65,7 @@ public:
           pool.set_g(v, new_g);
           pool.set_parent(v, u);
 
-          if (stats_) stats->nodes_generated++;
+          if (stats_) stats_->nodes_generated++;
           priority_queue_.push(v, new_f, v_h);
         }
       }

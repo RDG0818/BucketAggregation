@@ -39,8 +39,8 @@ TEST_F(GridEnvironmentTest, GoalVerification) {
 }
 
 TEST_F(GridEnvironmentTest, EdgeCosts) {
-  EXPECT_EQ(env->get_edge_cost(0), 1);
-  EXPECT_EQ(env->get_edge_cost(w * h - 1), 1);
+  EXPECT_EQ(env->get_edge_cost(1, 0), 1);
+  EXPECT_EQ(env->get_edge_cost(w * h - 2, w * h - 1), 1);
 }
 
 TEST_F(GridEnvironmentTest, Successors) {

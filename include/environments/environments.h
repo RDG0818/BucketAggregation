@@ -28,7 +28,9 @@ public:
   }
   bool is_goal(uint32_t id) const { return id == goal_id_; }
 
-  inline uint32_t get_edge_cost(uint32_t id) const { return grid_map_[id]; }
+  uint32_t get_start_node();
+
+  inline uint32_t get_edge_cost(uint32_t u, uint32_t v) const { return grid_map_[v]; }
 
   NodePool& get_pool() { return pool_; }
   const NodePool& get_pool() const { return pool_; }
@@ -64,7 +66,7 @@ public:
 
   PancakeEnvironment(uint32_t seed = 42, uint32_t capacity = 1e7);
 
-  void reset_serach() { pool_.prepare_for_search(); }
+  void reset_search() { pool_.prepare_for_search(); }
 
   void get_successors(uint32_t u_id, std::vector<uint32_t>& neighbors);
 

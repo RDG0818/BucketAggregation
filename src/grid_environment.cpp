@@ -24,6 +24,11 @@ GridEnvironment::GridEnvironment(uint32_t w, uint32_t h, uint32_t seed) : w_(w),
     grid_map_[goal_id_] = 1;
   };
 
+  uint32_t GridEnvironment::get_start_node() {
+    return 0;
+  }
+  
+
 void GridEnvironment::get_successors(uint32_t u_id, std::vector<uint32_t>& neighbors) {
   neighbors.clear();
 
