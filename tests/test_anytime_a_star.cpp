@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "algorithms/awa.h"
+#include "algorithms/anytime_a_star.h"
 #include "queues/binary_heap.h"
 #include "environments/node.h"
 #include <vector>
@@ -59,9 +59,9 @@ private:
   std::unordered_map<T, std::vector<std::pair<T, uint32_t>>> adj_;
 };
 
-class AWAStarTest : public ::testing::Test {};
+class AnytimeAStarTest : public ::testing::Test {};
 
-TEST_F(AWAStarTest, StraightLinePath) {
+TEST_F(AnytimeAStarTest, StraightLinePath) {
   TestEnvironment env(0, 4);
   env.add_edge(0, 1, 1);
   env.add_edge(1, 2, 1);
@@ -69,8 +69,8 @@ TEST_F(AWAStarTest, StraightLinePath) {
   env.add_edge(3, 4, 1);
 
   BinaryHeap<uint32_t, std::greater<uint32_t>> pq;
-  AWAStar<TestEnvironment, BinaryHeap<uint32_t, std::greater<uint32_t>>> awa(env, pq);
-  awa.solve();
+  AnytimeAStar<TestEnvironment, BinaryHeap<uint32_t, std::greater<uint32_t>>> anytime_a_star(env, pq);
+  anytime_a_star.solve();
 
   const auto& pool = env.get_pool();
   EXPECT_EQ(pool.get_g(4), 4);
@@ -89,7 +89,7 @@ TEST_F(AWAStarTest, StraightLinePath) {
   EXPECT_EQ(path, expected);
 }
 
-TEST_F(AWAStarTest, PathWithChoice) {
+TEST_F(AnytimeAStarTest, PathWithChoice) {
   TestEnvironment env(0, 3);
   // Suboptimal path (Cost 6)
   env.add_edge(0, 1, 1);
@@ -100,8 +100,8 @@ TEST_F(AWAStarTest, PathWithChoice) {
   env.add_edge(2, 3, 1);
 
   BinaryHeap<uint32_t, std::greater<uint32_t>> pq;
-  AWAStar<TestEnvironment, BinaryHeap<uint32_t, std::greater<uint32_t>>> awa(env, pq);
-  awa.solve();
+  AnytimeAStar<TestEnvironment, BinaryHeap<uint32_t, std::greater<uint32_t>>> anytime_a_star(env, pq);
+  anytime_a_star.solve();
   
   const auto& pool = env.get_pool();
   EXPECT_EQ(pool.get_g(3), 2);
@@ -119,7 +119,7 @@ TEST_F(AWAStarTest, PathWithChoice) {
   EXPECT_EQ(path, expected);
 }
 
-TEST_F(AWAStarTest, PruningLogic) {
+TEST_F(AnytimeAStarTest, PruningLogic) {
   TestEnvironment env(0, 4);
   
   // Path A: 0 -> 1 -> 4 (Cost 10)
@@ -133,8 +133,8 @@ TEST_F(AWAStarTest, PruningLogic) {
   env.add_edge(3, 4, 1);
   
   BinaryHeap<uint32_t, std::greater<uint32_t>> pq;
-  AWAStar<TestEnvironment, BinaryHeap<uint32_t, std::greater<uint32_t>>> awa(env, pq);
-  awa.solve();
+  AnytimeAStar<TestEnvironment, BinaryHeap<uint32_t, std::greater<uint32_t>>> anytime_a_star(env, pq);
+  anytime_a_star.solve();
   
   const auto& pool = env.get_pool();
   EXPECT_EQ(pool.get_g(4), 3);

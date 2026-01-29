@@ -33,6 +33,11 @@ public:
     return heap_.front().id;
   }
 
+  PriorityType top_priority() const {
+    if (heap_.empty()) return std::numeric_limits<PriorityType>::max();
+    return heap_.front().priority;
+  }
+
   bool empty() const { return heap_.empty(); }
 
   void clear() {

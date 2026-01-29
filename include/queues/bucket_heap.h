@@ -1,239 +1,111 @@
 #pragma once
 
 #include "environments/node.h"
+#include "two_level_bucket_queue.h"
 #include "binary_heap.h"
 
 #include <vector>
-#include <memory>
-#include <limits>
 #include <functional>
-#include <unordered_map>
 
-template <typename PriorityType, typename Compare = std::less<PriorityType>>
+template <typename PriorityType, typename Compare = std::greater<PriorityType>>
 class BucketHeap {
 
-private:
-  // NodeList stores pairs of {handle, generation}
-  using NodeList = std::vector<std::pair<uint32_t, uint32_t>>; 
-  using SecondaryBucketMap = std::vector<NodeList>; 
-
-  struct PrimaryBucket {
-    PriorityType dynamic_priority = std::numeric_limits<PriorityType>::lowest();
-    uint32_t h_min = std::numeric_limits<uint32_t>::max();
-    std::unique_ptr<SecondaryBucketMap> secondary_buckets;
-    uint32_t node_count = 0;
-  };
-
 public:
+    BucketHeap(NodePool& pool, uint32_t f_cap_hint = 1024) 
+        : pool_(pool), 
+          bucket_store_(f_cap_hint) {
+    }
 
-  using PriorityFunc = std::function<PriorityType(uint32_t node_handle)>;
+    void push(uint32_t id, PriorityType priority, uint32_t h) {
+        uint32_t g = pool_.get_g(id);
+        uint32_t f = g + h;
 
-  BucketHeap(NodePool& p, PriorityFunc pf, uint32_t f_cap = 4096, uint32_t h_cap = 1024)
-    : pool_(p),
-      priority_func_(pf),
-      heap_(bucket_node_pool_),
-      f_capacity_(f_cap),
-      h_capacity_(h_cap),
-      count_(0)
-    {
-      buckets_.resize(f_capacity_);
-      bucket_node_pool_.reserve(f_capacity_);
-    };
+        size_t old_count = bucket_store_.get_node_count(f);
+        
+        bucket_store_.push(id, f, h);
 
-  void set_priority_func(PriorityFunc pf) {
-    priority_func_ = pf;
-  }
-
-  void push(uint32_t handle) {
-    const bool is_new_node = !contains(handle);
-    const auto& node_data = pool_[handle];
-    const uint32_t f_cost = node_data.g + node_data.h;
-    const uint32_t h_cost = node_data.h;
-
-    resize_if_needed_(f_cost, h_cost);
-    PrimaryBucket& bucket = buckets_[f_cost];
-
-    if (!bucket.secondary_buckets) {
-      bucket.secondary_buckets = std::make_unique<SecondaryBucketMap>(h_capacity_);
-      bucket.h_min = h_cost;
-      bucket.dynamic_priority = priority_func_(handle);
-      heap_.push(f_cost, bucket.dynamic_priority);
-    } 
-    else {
-      bool priority_changed = false;
-      // If this new node sets a new h_min, or if it has the same h as the current h_min,
-      // the bucket's priority might need to be updated.
-      if (h_cost < bucket.h_min) {
-        bucket.h_min = h_cost;
-        priority_changed = true;
-      } else if (h_cost == bucket.h_min) {
-        // If the new node's priority is better than the current bucket priority,
-        // it becomes the new representative.
-        if (Compare()(priority_func_(handle), bucket.dynamic_priority)) {
-          priority_changed = true;
+        if (f >= current_priorities_.size()) {
+            size_t new_size = std::max<size_t>(f + 1, current_priorities_.size() * 1.5);
+            current_priorities_.resize(new_size, std::numeric_limits<PriorityType>::lowest());
         }
-      }
-
-      if (priority_changed) {
-        bucket.dynamic_priority = priority_func_(handle);
-        heap_.decrease_key(f_cost, bucket.dynamic_priority);
-      }
+        
+        // If the bucket was empty, or if the new priority is better (for max-heap), update.
+        // The lazy push handles decrease-key.
+        if (old_count == 0 || Compare()(priority, current_priorities_[f])) {
+            primary_heap_.push(f, priority);
+            current_priorities_[f] = priority;
+        }
     }
 
-    (*bucket.secondary_buckets)[h_cost].push_back({handle, generations_[handle]});
-    pool_[handle].queue_ref = f_cost;
-    bucket.node_count++;
+    uint32_t pop() {
+        while (!primary_heap_.empty()) {
+            uint32_t f_cost = primary_heap_.top();
+            PriorityType heap_priority = primary_heap_.top_priority();
 
-    if (is_new_node) {
-        count_++;
-    }
-  }
-
-  uint32_t pop() {
-    while (!empty()) {
-      uint32_t f_bucket_idx = heap_.pop();
-      PrimaryBucket& bucket = buckets_[f_bucket_idx];
-
-      while (bucket.node_count > 0) {
-        NodeList& nodes = (*bucket.secondary_buckets)[bucket.h_min];
-
-        while (!nodes.empty()) {
-          auto node_entry = nodes.back();
-          uint32_t handle = node_entry.first;
-          uint32_t stored_generation = node_entry.second;
-
-          nodes.pop_back();
-          bucket.node_count--;
-
-          if (stored_generation != generations_[handle]) {
-            continue; // Stale node
-          }
-
-          count_--;
-          pool_[handle].queue_ref = NODE_NULL;
-
-          // If the h_min bucket is now empty, find the next one.
-          if (nodes.empty()) {
-            find_next_h_min_(bucket);
-          }
-          
-          // If the bucket still has nodes, re-calculate its priority from its
-          // h_min representative and push it back on the heap.
-          if (bucket.node_count > 0) {
-            // Must clean out stale nodes from the new h_min bucket front
-            // until we find a valid representative.
-            while(bucket.node_count > 0) {
-                NodeList& rep_nodes = (*bucket.secondary_buckets)[bucket.h_min];
-                while(!rep_nodes.empty()) {
-                    auto& back_entry = rep_nodes.back();
-                    if(back_entry.second == generations_[back_entry.first]) {
-                        bucket.dynamic_priority = priority_func_(back_entry.first);
-                        heap_.push(f_bucket_idx, bucket.dynamic_priority);
-                        goto found_rep;
-                    } else {
-                        rep_nodes.pop_back();
-                        bucket.node_count--;
-                    }
-                }
-                find_next_h_min_(bucket);
+            if (f_cost >= current_priorities_.size() || heap_priority != current_priorities_[f_cost]) {
+                primary_heap_.pop();
+                continue;
             }
-            found_rep:;
-          }
-          
-          return handle;
+
+            primary_heap_.pop();
+            
+            bucket_store_.set_f_min(f_cost);
+            uint32_t id = bucket_store_.pop();
+
+            if (bucket_store_.get_node_count(f_cost) > 0) {
+                uint32_t new_h_min = bucket_store_.get_h_min(f_cost);
+                uint32_t rep_id = bucket_store_.peek_top_node(f_cost, new_h_min);
+                uint32_t rep_g = pool_.get_g(rep_id);
+
+                PriorityType new_priority = priority_calculator_(rep_g, new_h_min);
+                primary_heap_.push(f_cost, new_priority);
+                current_priorities_[f_cost] = new_priority;
+            }
+
+            return id;
         }
-
-        find_next_h_min_(bucket);
-      }
+        return NODE_NULL;
     }
-    return NODE_NULL;
-  }
 
-  void decrease_key(uint32_t handle) {
-    generations_[handle]++;
-    push(handle);
-  }
+    template<typename Func>
+    void rebuild(Func new_priority_calculator) {
+        priority_calculator_ = new_priority_calculator;
 
-  void rebuild() {
-    heap_.rebuild([&](uint32_t f_bucket_idx) {
-      PrimaryBucket& bucket = buckets_[f_bucket_idx];
-      if (bucket.node_count == 0) {
-        return std::numeric_limits<PriorityType>::lowest();
-      }
+        primary_heap_.rebuild([&](uint32_t f_cost_index) {
+            uint32_t h_min = bucket_store_.get_h_min(f_cost_index);
+            if (h_min == std::numeric_limits<uint32_t>::max()) {
+                return std::numeric_limits<PriorityType>::lowest();
+            }
+            uint32_t representative_node_id = bucket_store_.peek_top_node(f_cost_index, h_min);
+            uint32_t g_cost = pool_.get_g(representative_node_id);
+            
+            PriorityType new_priority = new_priority_calculator(g_cost, h_min);
+            if(f_cost_index >= current_priorities_.size()) {
+                current_priorities_.resize(f_cost_index + 1, std::numeric_limits<PriorityType>::lowest());
+            }
+            current_priorities_[f_cost_index] = new_priority;
+            return new_priority;
+        });
+    }
 
-      // In a rebuild, we must find the true best priority for each bucket
-      // according to the new priority function, based on its h_min node.
-      // This requires cleaning stale nodes from h_min buckets until a valid rep is found.
-       while(bucket.node_count > 0) {
-          NodeList& rep_nodes = (*bucket.secondary_buckets)[bucket.h_min];
-          while(!rep_nodes.empty()) {
-              auto& back_entry = rep_nodes.back();
-              if(back_entry.second == generations_[back_entry.first]) {
-                  bucket.dynamic_priority = priority_func_(back_entry.first);
-                  return bucket.dynamic_priority;
-              } else {
-                  rep_nodes.pop_back();
-                  bucket.node_count--;
-              }
-          }
-          find_next_h_min_(bucket);
-      }
-      return std::numeric_limits<PriorityType>::lowest();
-    });
-  }
+    bool empty() const { 
+        // The primary heap can have stale entries, so we can't just check its size.
+        // A full check is too slow. We rely on pop() to return NODE_NULL when truly empty.
+        // For the main loop, `primary_heap_.empty()` is a good enough heuristic.
+        return primary_heap_.empty(); 
+    }
 
-  bool contains(uint32_t handle) const { return pool_[handle].queue_ref != NODE_NULL; }
-  bool empty() const { return count_ == 0; }
-
+    void clear() {
+        primary_heap_.clear();
+        bucket_store_.clear();
+        current_priorities_.clear();
+    }
+    
 private:
+    NodePool& pool_;
+    TwoLevelBucketQueue bucket_store_;
+    BinaryHeap<PriorityType, Compare> primary_heap_;
+    std::vector<PriorityType> current_priorities_;
 
-  void resize_if_needed_(uint32_t f_cost, uint32_t h_cost) {
-    if (f_cost >= f_capacity_) {
-      uint32_t new_f_capacity = f_capacity_ > 0 ? f_capacity_ : 1;
-      while (f_cost >= new_f_capacity) {
-        new_f_capacity *= 2;
-      }
-      f_capacity_ = new_f_capacity;
-
-      buckets_.resize(f_capacity_);
-      bucket_node_pool_.reserve(f_capacity_);
-      while(f_cost >= bucket_node_pool_.size()){
-        bucket_node_pool_.allocate(NODE_NULL, 0, 0);
-      }
-    }
-
-    PrimaryBucket& bucket = buckets_[f_cost];
-    if (bucket.secondary_buckets && h_cost >= bucket.secondary_buckets->size()) {
-      uint32_t current_h_cap = bucket.secondary_buckets->size();
-      uint32_t new_h_cap = current_h_cap > 0 ? current_h_cap : 1;
-      while (h_cost >= new_h_cap) {
-          new_h_cap *= 2;
-      }
-      bucket.secondary_buckets->resize(new_h_cap);
-    }
-  }
-
-  void find_next_h_min_(PrimaryBucket& bucket) {
-    uint32_t current_h = bucket.h_min + 1;
-    while (current_h < bucket.secondary_buckets->size()) {
-      if (!(*bucket.secondary_buckets)[current_h].empty()) {
-        bucket.h_min = current_h;
-        return;
-      }
-      current_h++;
-    }
-    bucket.h_min = std::numeric_limits<uint32_t>::max();
-  }
-
-  NodePool& pool_; 
-  NodePool bucket_node_pool_;
-  BinaryHeap<PriorityType, Compare> heap_;
-  
-  std::vector<PrimaryBucket> buckets_;
-  std::unordered_map<uint32_t, uint32_t> generations_;
-  PriorityFunc priority_func_;
-  uint32_t f_capacity_;
-  uint32_t h_capacity_;
-  size_t count_;
-
+    std::function<PriorityType(uint32_t, uint32_t)> priority_calculator_;
 };

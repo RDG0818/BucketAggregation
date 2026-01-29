@@ -8,11 +8,11 @@
 #include <cstdint>
 
 template <typename E, typename PQ> 
-class AWAStar {
+class AnytimeAStar {
 
 public:
 
-  AWAStar(E& env, PQ& priority_queue, utils::SearchStats* stats = nullptr) 
+  AnytimeAStar(E& env, PQ& priority_queue, utils::SearchStats* stats = nullptr) 
   : env_(env), 
     priority_queue_(priority_queue),
     stats_(stats) {};
