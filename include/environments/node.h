@@ -91,7 +91,7 @@ private:
   std::vector<uint32_t> g_costs_;
   std::vector<uint32_t> parents_;
 
-  std::vector<uint32_t> generated_at_;
+  std::vector<uint16_t> generated_at_;
   std::vector<uint32_t> closed_on_iteration_;
   uint32_t search_iteration_ = 0;
 

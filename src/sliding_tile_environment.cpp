@@ -2,6 +2,31 @@
 
 #include "environments/environments.h"
 
+const int8_t SlidingTileEnvironment::MOVES[16][4] = {
+    {1, 4, -1, -1},   {0, 2, 5, -1},    {1, 3, 6, -1},    {2, 7, -1, -1},   // 0-3
+    {0, 5, 8, -1},    {1, 4, 6, 9},     {2, 5, 7, 10},    {3, 6, 11, -1},   // 4-7
+    {4, 9, 12, -1},   {5, 8, 10, 13},   {6, 9, 11, 14},   {7, 10, 15, -1},  // 8-11
+    {8, 13, -1, -1},  {9, 12, 14, -1},  {10, 13, 15, -1}, {11, 14, -1, -1}  // 12-15
+};
+
+const uint8_t SlidingTileEnvironment::MD_TABLE[16][16] = {
+    {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0}, // Tile 0 (Blank) - usually ignored, keeping 0s
+    {1,0,1,2, 2,1,2,3, 3,2,3,4, 4,3,4,5}, // Tile 1 (Target: 1)
+    {2,1,0,1, 3,2,1,2, 4,3,2,3, 5,4,3,4}, // Tile 2 (Target: 2)
+    {3,2,1,0, 4,3,2,1, 5,4,3,2, 6,5,4,3}, // Tile 3 (Target: 3)
+    {1,2,3,4, 0,1,2,3, 1,2,3,4, 2,3,4,5}, // Tile 4 (Target: 4)
+    {2,1,2,3, 1,0,1,2, 2,1,2,3, 3,2,3,4}, // Tile 5 (Target: 5)
+    {3,2,1,2, 2,1,0,1, 3,2,1,2, 4,3,2,3}, // Tile 6 (Target: 6)
+    {4,3,2,1, 3,2,1,0, 4,3,2,1, 5,4,3,2}, // Tile 7 (Target: 7)
+    {2,3,4,5, 1,2,3,4, 0,1,2,3, 1,2,3,4}, // Tile 8 (Target: 8)
+    {3,2,3,4, 2,1,2,3, 1,0,1,2, 2,1,2,3}, // Tile 9 (Target: 9)
+    {4,3,2,3, 3,2,1,2, 2,1,0,1, 3,2,1,2}, // Tile 10 (Target: 10)
+    {5,4,3,2, 4,3,2,1, 3,2,1,0, 4,3,2,1}, // Tile 11 (Target: 11)
+    {3,4,5,6, 2,3,4,5, 1,2,3,4, 0,1,2,3}, // Tile 12 (Target: 12)
+    {4,3,4,5, 3,2,3,4, 2,1,2,3, 1,0,1,2}, // Tile 13 (Target: 13)
+    {5,4,3,4, 4,3,2,3, 3,2,1,2, 2,1,0,1}, // Tile 14 (Target: 14)
+    {6,5,4,3, 5,4,3,2, 4,3,2,1, 3,2,1,0} // Tile 15 (Target: 15)
+};
 
 SlidingTileEnvironment::SlidingTileEnvironment(int instance_index, std::string filename, uint32_t capacity) : capacity_(capacity) {
 
@@ -66,15 +91,10 @@ void SlidingTileEnvironment::get_successors(uint32_t u_id, std::vector<uint32_t>
     }
   }
 
-  static const int moves[4] = {-4, 4, -1, 1};
+  for (int i = 0; i < 4; i++) {
+    int neighbor_idx = MOVES[blank_idx][i];
 
-  for (int move : moves) {
-    int neighbor_idx = blank_idx + move;
-
-    // Bound checks
-    if (neighbor_idx < 0 || neighbor_idx >= 16) continue; // vertical
-    if (move == -1 && (blank_idx % 4 == 0)) continue; // left
-    if (move == 1 && (blank_idx % 4 == 3)) continue; // right
+    if (neighbor_idx == -1) break;
 
     uint64_t tile_val = get_tile(parent_state, neighbor_idx);
     int shift_blank = (15 - blank_idx) * 4;

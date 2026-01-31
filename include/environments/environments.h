@@ -136,14 +136,7 @@ public:
       int tile = get_tile(state, i);
       if (tile == 0) continue;
 
-      int cx = i % 4;
-      int cy = i / 4;
-
-      int target_idx = tile;
-      int tx = target_idx % 4;
-      int ty = target_idx / 4;
-
-      h += std::abs(cx - tx) + std::abs(cy - ty);
+      h += MD_TABLE[tile][i];
     }
     return h;
   }
@@ -175,5 +168,8 @@ private:
   T start_state_;
   T goal_state_;
   uint32_t goal_id_;
+
+  static const int8_t MOVES[16][4];
+  static const uint8_t MD_TABLE[16][16];
 
 };

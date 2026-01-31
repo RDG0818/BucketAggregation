@@ -1,3 +1,5 @@
+// include/queues/bucket_queue.h
+
 #pragma once
 
 #include "environments/node.h"
@@ -11,7 +13,7 @@ class BucketQueue {
 public:
 
   BucketQueue(uint32_t initial_max_cost = 1024) 
-    : min_priority_(std::numeric_limits<uint32_t>::max()), count_(0) {
+    : min_priority_(INF_COST), count_(0) {
       buckets_.reserve(initial_max_cost);
     }
 
@@ -58,7 +60,7 @@ public:
   void clear() {
     buckets_.clear();
     count_ = 0;
-    min_priority_ = std::numeric_limits<uint32_t>::max();
+    min_priority_ = INF_COST;
   }
 
   template <typename T>

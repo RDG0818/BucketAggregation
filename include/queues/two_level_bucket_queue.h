@@ -1,3 +1,5 @@
+// include/queues/two_level_bucket_queue.h
+
 #pragma once
 
 #include <limits>
@@ -14,7 +16,7 @@ private:
 
   struct PrimaryBucket {
     std::vector<std::unique_ptr<SecondaryBucket>> h_buckets;
-    uint32_t h_min = std::numeric_limits<uint32_t>::max();
+    uint32_t h_min = INF_COST;
     size_t count = 0;
   };
 
@@ -125,7 +127,7 @@ public:
   }
 
   uint32_t get_h_min(uint32_t f) const {
-    if (f >= f_buckets_.size()) return std::numeric_limits<uint32_t>::max();
+    if (f >= f_buckets_.size()) return INF_COST;
     return f_buckets_[f].h_min;
   }
 
