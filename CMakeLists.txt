@@ -5,6 +5,16 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+
+if(MSVC)
+    add_compile_options(/O2 /Oi /Ot)
+else()
+    add_compile_options(-O3 -march=native -flto)
+endif()
+
 add_subdirectory(googletest)
 
 set(SRC_FILES 

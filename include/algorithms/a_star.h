@@ -26,6 +26,11 @@ public:
 
     while (!priority_queue_.empty()) {
       uint32_t u = priority_queue_.pop();
+      if (pool.is_closed(u)) {
+        continue;
+      }
+      pool.mark_closed(u);
+
       if (stats_) { stats_->nodes_expanded++; }
 
       if (env_.is_goal(u)) {

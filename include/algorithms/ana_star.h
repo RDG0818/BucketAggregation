@@ -9,8 +9,11 @@
 template<typename T>
 struct is_bucket_heap : std::false_type {};
 
-template<typename PC>
-struct is_bucket_heap<BucketHeap<PC>> : std::true_type {};
+template<typename PC, typename C>
+struct is_bucket_heap<BucketHeap<PC, C>> : std::true_type {};
+
+template<typename Q>
+struct is_bucket_heap<utils::ProfiledQueue<Q>> : is_bucket_heap<Q> {};
 
 template <typename E, typename PQ>
 class ANAStar {

@@ -5,7 +5,7 @@
 #include "queues/two_level_bucket_queue.h"
 #include "utils/utils.h"
 
-template <typename PriorityCalculator>
+template <typename PriorityCalculator, typename Compare = std::greater<double>>
 class BucketHeap {
 
 public:
@@ -66,7 +66,7 @@ public:
 
 private:
   TwoLevelBucketQueue buckets_;
-  IndexedBinaryHeap<double> primary_heap_;
+  IndexedBinaryHeap<double, Compare> primary_heap_;
   PriorityCalculator& calculator_;
 
 }; 

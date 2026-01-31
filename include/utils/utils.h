@@ -94,6 +94,12 @@ struct has_rebuild : std::false_type {};
 template<typename Q, typename F>
 struct has_rebuild<Q, F, std::void_t<decltype(std::declval<Q>().rebuild(std::declval<F>()))>> : std::true_type {};
 
+template<typename Q, typename = std::void_t<>>
+struct has_rebuild_no_args : std::false_type {};
+
+template<typename Q>
+struct has_rebuild_no_args<Q, std::void_t<decltype(std::declval<Q>().rebuild())>> : std::true_type {};
+
 template <typename QueueType>
 class ProfiledQueue {
 public:
@@ -135,6 +141,22 @@ public:
       stats_.time_rebuild += std::chrono::duration<double, std::nano>(end - start).count();
       stats_.count_rebuild++;
     }
+  }
+
+  void rebuild() {
+    if constexpr (has_rebuild_no_args<QueueType>::value) {
+      auto start = std::chrono::steady_clock::now();
+      
+      queue_.rebuild();
+      
+      auto end = std::chrono::steady_clock::now();
+      stats_.time_rebuild += std::chrono::duration<double, std::nano>(end - start).count();
+      stats_.count_rebuild++;
+    }
+  }
+
+  auto& get_calculator() {
+    return queue_.get_calculator();
   }
 
   bool empty() const { return queue_.empty(); }

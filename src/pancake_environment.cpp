@@ -47,7 +47,7 @@ uint32_t PancakeEnvironment::get_start_node() {
 void PancakeEnvironment::get_successors(uint32_t u_id, std::vector<uint32_t>& neighbors) {
   neighbors.clear();
 
-  const T& current_state = node_states_[u_id];
+  const T current_state = node_states_[u_id];
 
   static thread_local T temp_state;
 
