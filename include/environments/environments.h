@@ -49,7 +49,7 @@ class PancakeEnvironment {
 
 public:
 
-  static constexpr size_t N = 20;
+  static constexpr size_t N = 18;
   using T = std::array<uint8_t, N>;
 
   // FNV-1a Hash

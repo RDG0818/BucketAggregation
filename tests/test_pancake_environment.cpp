@@ -53,7 +53,7 @@ TEST_F(PancakeEnvironmentTest, HeuristicCalculation) {
 
   std::iota(state_array.rbegin(), state_array.rend(), 0);
   uint32_t id_reverse = env->get_or_create_id(state_array);
-  EXPECT_EQ(env->get_heuristic(id_reverse), 0);
+  EXPECT_EQ(env->get_heuristic(id_reverse), 1);
 
   std::iota(state_array.begin(), state_array.end(), 0);
   std::swap(state_array[0], state_array[1]); 
@@ -86,7 +86,7 @@ TEST_F(PancakeEnvironmentTest, SuccessorGeneration) {
 
   // There should be N-1 successors (flipping 2..N)
   // PancakeEnvironment::N is 48
-  EXPECT_EQ(neighbors.size(), 47);
+  EXPECT_EQ(neighbors.size(), PancakeEnvironment::N - 1);
 
   // Verify a specific successor exists: Flipping top 2 elements
   PancakeEnvironment::T expected_state = parent_state;

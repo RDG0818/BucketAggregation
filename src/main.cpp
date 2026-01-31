@@ -19,7 +19,7 @@
 
 template <template<typename, typename> class Algorithm, typename Environment, typename Queue>
 void run_benchmark(Environment& env, Queue& queue, utils::SearchStats& stats, const std::string& description) {
-    std::cout << description << "\n";
+    std::cout << description << "\n\n";
     stats.reset();
     env.reset_search();
     queue.clear(); 
@@ -43,9 +43,8 @@ void run_benchmark(Environment& env, Queue& queue, utils::SearchStats& stats, co
 int main() {
     utils::SearchStats stats;
 
-    std::cout << "Grid Environment\n";
-
-    GridEnvironment grid_env(1000, 1000, 42);
+    std::cout << "\n\033[1m" << "Grid Environment" << "\033[0m\n" << "========================\n\n";
+    GridEnvironment grid_env(100, 100, 42);
 
     {
         BinaryHeap<uint32_t> heap;
@@ -67,30 +66,31 @@ int main() {
         run_benchmark<ANAStar>(grid_env, heap, stats, "ANA* with BinaryHeap");
     }
 
-    // std::cout << "========================================\n";
-    // std::cout << "       Sliding Tile Puzzle (Easy)       \n";
-    // std::cout << "========================================\n\n";
+    {
+        struct ANAStarPriorityCalculator {
+            double G_upper = std::numeric_limits<double>::max();
 
-    // {
-    //     std::ofstream easy_file("easy.txt");
-    //     easy_file << "1 2 3 4 5 6 7 8 9 10 11 12 13 14 0 15\n"; 
-    // }
+            void set_g_upper(double g) {
+                G_upper = g;
+            }
 
-    // try {
-    //     SlidingTileEnvironment tile_env(0, "easy.txt");
+            double operator()(uint32_t f, uint32_t h) const {
+                if (h == 0) {
+                    return std::numeric_limits<double>::max();
+                }
+                double g = static_cast<double>(f) - h;
+                if (g >= G_upper) {
+                    return std::numeric_limits<double>::lowest();
+                }
+                return (G_upper - g) / static_cast<double>(h);
+            }
+        };
+        ANAStarPriorityCalculator calculator;
+        BucketHeap<ANAStarPriorityCalculator> bucket_heap(calculator);
+        run_benchmark<ANAStar>(grid_env, bucket_heap, stats, "ANA* with BucketHeap");
+    }
 
-    //     {
-    //         BinaryHeap<uint32_t> heap;
-    //         run_benchmark<AStar>(tile_env, heap, stats, "A* with BinaryHeap (Easy)");
-    //     }
-    // } catch (const std::exception& e) {
-    //     std::cerr << "Error setting up easy SlidingTileEnvironment: " << e.what() << std::endl;
-    // }
-
-    // std::cout << "========================================\n";
-    // std::cout << "       Sliding Tile Puzzle (Inst 0)     \n";
-    // std::cout << " (This is a hard puzzle and may take a long time)\n";
-    // std::cout << "========================================\n\n";
+    // std::cout << "\n\033[1m" << "Sliding Tile Puzzle" << "\033[0m\n" << "========================\n\n";
     
     // try {
     //     SlidingTileEnvironment tile_env(0, "korf100.txt");
@@ -110,11 +110,35 @@ int main() {
     //         run_benchmark<ANAStar>(tile_env, heap, stats, "ANA* with BinaryHeap");
     //     }
 
+    //     {
+    //         struct ANAStarPriorityCalculator {
+    //             double G_upper = std::numeric_limits<double>::max();
+
+    //             void set_g_upper(double g) {
+    //                 G_upper = g;
+    //             }
+
+    //             double operator()(uint32_t f, uint32_t h) const {
+    //                 if (h == 0) {
+    //                     return std::numeric_limits<double>::max();
+    //                 }
+    //                 double g = static_cast<double>(f) - h;
+    //                 if (g >= G_upper) {
+    //                     return std::numeric_limits<double>::lowest();
+    //                 }
+    //                 return (G_upper - g) / static_cast<double>(h);
+    //             }
+    //         };
+    //         ANAStarPriorityCalculator calculator;
+    //         BucketHeap<ANAStarPriorityCalculator> bucket_heap(calculator);
+    //         run_benchmark<ANAStar>(tile_env, bucket_heap, stats, "ANA* with BucketHeap");
+    //     }
+
     // } catch (const std::exception& e) {
     //     std::cerr << "Error setting up SlidingTileEnvironment: " << e.what() << std::endl;
     // }
 
-    std::cout << "Pancake Puzzle (N=20)\n";
+    std::cout << "\033[1m" << "Pancake Puzzle" << "\033[0m\n" << "========================\n\n";
     
     PancakeEnvironment pancake_env(42);
     pancake_env.generate_start_node();
@@ -132,6 +156,30 @@ int main() {
     {
         BinaryHeap<double, std::less<double>> heap;
         run_benchmark<ANAStar>(pancake_env, heap, stats, "ANA* with BinaryHeap");
+    }
+
+    {
+        struct ANAStarPriorityCalculator {
+            double G_upper = std::numeric_limits<double>::max();
+
+            void set_g_upper(double g) {
+                G_upper = g;
+            }
+
+            double operator()(uint32_t f, uint32_t h) const {
+                if (h == 0) {
+                    return std::numeric_limits<double>::max();
+                }
+                double g = static_cast<double>(f) - h;
+                if (g >= G_upper) {
+                    return std::numeric_limits<double>::lowest();
+                }
+                return (G_upper - g) / static_cast<double>(h);
+            }
+        };
+        ANAStarPriorityCalculator calculator;
+        BucketHeap<ANAStarPriorityCalculator> bucket_heap(calculator);
+        run_benchmark<ANAStar>(pancake_env, bucket_heap, stats, "ANA* with BucketHeap");
     }
 
     return 0;

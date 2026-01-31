@@ -60,6 +60,10 @@ public:
     primary_heap_.rebuild(update_func);
   }
 
+  PriorityCalculator& get_calculator() {
+    return calculator_;
+  }
+
 private:
   TwoLevelBucketQueue buckets_;
   IndexedBinaryHeap<double> primary_heap_;
