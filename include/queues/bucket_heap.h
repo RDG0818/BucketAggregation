@@ -28,6 +28,7 @@ public:
   uint32_t pop() {
     if (primary_heap_.empty()) return NODE_NULL;
     uint32_t best_f = primary_heap_.top();
+    uint32_t old_h_min = buckets_.get_h_min(best_f);
     uint32_t node_id = buckets_.pop_from(best_f);
 
     if (buckets_.get_node_count(best_f) == 0) {
@@ -35,9 +36,10 @@ public:
     }
     else {
       uint32_t current_h_min = buckets_.get_h_min(best_f);
-      double priority = calculator_(best_f, current_h_min);
-
-      primary_heap_.change_priority(best_f, priority);
+      if (current_h_min != old_h_min) {
+        double priority = calculator_(best_f, current_h_min);
+        primary_heap_.change_priority(best_f, priority);
+      }
     }
 
     return node_id;

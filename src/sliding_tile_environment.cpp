@@ -5,7 +5,7 @@
 
 SlidingTileEnvironment::SlidingTileEnvironment(int instance_index, std::string filename, uint32_t capacity) : capacity_(capacity) {
 
-  goal_state_ = 0x123456789ABCDEF0;
+  goal_state_ = 0x0123456789ABCDEF;
 
   goal_id_ = get_or_create_id(goal_state_);
 

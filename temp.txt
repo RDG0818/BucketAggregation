@@ -1,0 +1,58 @@
+🏗️ Core Architecture & Separation of Concerns
+
+The framework strictly enforces a separation of concerns to maximize modularity and performance. Each component has a single, well-defined responsibility.
+1. The Solver (Algorithm)
+
+    Responsibility: Orchestrates the search logic (A*, ANA*, etc.).
+
+    Behavior: It is the only component that understands F=G+H. It calculates priorities and decides when to push/pop from the queue. It handles duplicate detection (via NodePool checks) and goal checks.
+
+    Statelessness: Solvers hold no data between runs aside from configuration.
+
+2. The Environment (Graph Definition)
+
+    Responsibility: Defines the graph topology (Successors) and edge costs (C(u,v)).
+
+    Statelessness: Environments are stateless regarding the search progress. They do not store G values, parent pointers, or "Closed List" flags. They only store static map data (e.g., the grid layout or the tile configuration).
+
+    Optimizations:
+
+        Implicit Graphs: For domains like Grid, no node objects are created; state IDs are direct indices into memory.
+
+        Explicit Graphs: For domains like Sliding Tile, states are mapped to dense integer IDs on-the-fly.
+
+3. The NodePool (State Memory Manager)
+
+    Responsibility: The centralized "Source of Truth" for search data.
+
+    Data Layout: Uses Structure of Arrays (SoA) instead of Array of Structures (AoS).
+
+        vector<uint32_t> g_costs
+
+        vector<uint32_t> parents
+
+        vector<uint8_t> flags (visited status)
+
+    Optimization: This layout ensures that accessing g_costs[id] during node generation pulls only relevant integer data into the cache line, maximizing cache utilization and allowing SIMD optimizations.
+
+4. The Priority Queue (Open List)
+
+    Responsibility: A "dumb" container that orders integers based on a priority value.
+
+    Lazy Deletion: Queues do not support decrease_key or contains. If a better path to a node is found, it is simply pushed again. The Solver filters out stale entries upon popping by comparing the popped cost against the NodePool.
+
+    Optimization: This removes the need for expensive hash map lookups inside the queue operations.
+
+🛠️ Utilities
+
+    SearchStats: A comprehensive struct tracking micro-benchmarks (enqueue/dequeue times in nanoseconds) and macro-metrics (nodes expanded, solution cost).
+
+    ProfiledQueue: A wrapper class that uses std::chrono and SFINAE (Substitution Failure Is Not An Error) to transparently profile any queue implementation without modifying the algorithm code.
+
+
+
+Unlike standard object-oriented search implementations that suffer from pointer chasing and memory fragmentation, BucketHeap employs a Data-Oriented Design (DOD) philosophy. It utilizes Structure of Arrays (SoA), custom memory allocators, and flat data structures to keep the CPU cache hot and minimize allocation overhead.
+
+
+
+A*, [Anytime A*](https://arxiv.org/pdf/1110.2737), and [Anytime Non-parametric A*](https://goldberg.berkeley.edu/pubs/ana-aaai-2011-vdberg-shah-goldberg.pdf) are implemented with the following priority queues: Binary Heap, Lazy Binary Heap, Bucket Queue (A*), Two Level Bucket Queue (A*), and Bucket Heap (ANA*). Modifications have been made to the bucket heap data structure to support secondary bucket aggregation and real-valued weights. 

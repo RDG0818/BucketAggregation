@@ -77,7 +77,7 @@ TEST_F(SlidingTileEnvironmentTest, HeuristicCalculation) {
   SlidingTileEnvironment::T state;
 
   // Goal state
-  state = 0x123456789ABCDEF0;
+  state = 0x0123456789ABCDEF;
   uint32_t goal_id = env->get_or_create_id(state);
   EXPECT_EQ(env->get_heuristic(goal_id), 0);
 

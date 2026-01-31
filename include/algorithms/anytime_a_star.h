@@ -12,10 +12,11 @@ class AnytimeAStar {
 
 public:
 
-  AnytimeAStar(E& env, PQ& priority_queue, utils::SearchStats* stats = nullptr) 
+  AnytimeAStar(E& env, PQ& priority_queue, utils::SearchStats* stats = nullptr, double weight = 2.0) 
   : env_(env), 
     priority_queue_(priority_queue),
-    stats_(stats) {};
+    stats_(stats),
+    weight_(weight) {};
 
   void solve() {
     env_.reset_search();
@@ -26,8 +27,8 @@ public:
     uint32_t start_h = env_.get_heuristic(start_node);
     pool.set_g(start_node, 0);
 
-    priority_queue_.push(start_node, 0 + start_h, start_h);
-    uint32_t incumbent_cost = INF_COST;
+    priority_queue_.push(start_node, 0 + weight_ * start_h, start_h);
+    double incumbent_cost = std::numeric_limits<double>::infinity();
 
     std::vector<uint32_t> neighbors;
     neighbors.reserve(16);
@@ -35,13 +36,18 @@ public:
     while (!priority_queue_.empty()) {
       uint32_t u = priority_queue_.pop();
 
+      if (pool.is_closed(u)) {
+        continue;
+      }
+      pool.mark_closed(u);
+
       if (stats_) stats_->nodes_expanded++;
 
       uint32_t u_g = pool.get_g(u); // check on staleness
       uint32_t u_h = env_.get_heuristic(u); // Inlined computation
-      uint32_t u_f = u_g + u_h;
+      double u_f = u_g + u_h;
 
-      if (u_f >= incumbent_cost) continue; 
+      if (u_g + u_h >= incumbent_cost) continue; 
 
       if (env_.is_goal(u)) {
         incumbent_cost = u_g;
@@ -56,9 +62,9 @@ public:
         uint32_t new_g = u_g + cost;
 
         uint32_t v_h = env_.get_heuristic(v);
-        uint32_t new_f = new_g + v_h;
+        double new_f = new_g + v_h;
               
-        if (new_f>= incumbent_cost) {
+        if (new_g + v_h >= incumbent_cost) {
           continue;
         }
 
@@ -67,7 +73,7 @@ public:
           pool.set_parent(v, u);
 
           if (stats_) stats_->nodes_generated++;
-          priority_queue_.push(v, new_f, v_h);
+          priority_queue_.push(v, new_g + weight_ * v_h, v_h);
         }
       }
     }
@@ -78,5 +84,6 @@ private:
   E& env_;
   PQ& priority_queue_;
   utils::SearchStats* stats_;
+  double weight_;
 
 };
