@@ -38,11 +38,6 @@ public:
     while (!priority_queue_.empty()) {
       uint32_t u = priority_queue_.pop();
 
-      if (pool.is_closed(u)) {
-        continue;
-      }
-      pool.mark_closed(u);
-
       if (stats_) stats_->nodes_expanded++;
 
       uint32_t u_g = pool.get_g(u); // check on staleness
@@ -52,8 +47,10 @@ public:
       if (u_g + u_h >= incumbent_cost) continue; 
 
       if (env_.is_goal(u)) {
-        incumbent_cost = u_g;
-        if (stats_) { stats_->solution_cost = incumbent_cost; }
+        if (u_g < incumbent_cost) {
+          incumbent_cost = u_g;
+          if (stats_) { stats_->solution_cost = incumbent_cost; }
+        }
         continue;
       }
 

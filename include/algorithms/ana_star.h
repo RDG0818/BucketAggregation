@@ -7,12 +7,16 @@
 #include <limits>
 #include "utils/utils.h"
 #include "queues/bucket_heap.h"
+#include "queues/real_bucket_heap.h"
 
 template<typename T>
 struct is_bucket_heap : std::false_type {};
 
 template<typename PC, typename C>
 struct is_bucket_heap<BucketHeap<PC, C>> : std::true_type {};
+
+template<typename PC, typename C>
+struct is_bucket_heap<RealBucketHeap<PC, C>> : std::true_type {};
 
 template<typename Q>
 struct is_bucket_heap<utils::ProfiledQueue<Q>> : is_bucket_heap<Q> {};

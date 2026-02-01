@@ -66,10 +66,12 @@ CMAKE_BINARY_DIR = /home/ryan/BucketHeap/build
 all: CMakeFiles/core_lib.dir/all
 all: CMakeFiles/main.dir/all
 all: CMakeFiles/tests.dir/all
+all: external/cxxopts/all
 all: googletest/all
 .PHONY : all
 
 # The main recursive "preinstall" target.
+preinstall: external/cxxopts/preinstall
 preinstall: googletest/preinstall
 .PHONY : preinstall
 
@@ -77,8 +79,39 @@ preinstall: googletest/preinstall
 clean: CMakeFiles/core_lib.dir/clean
 clean: CMakeFiles/main.dir/clean
 clean: CMakeFiles/tests.dir/clean
+clean: external/cxxopts/clean
 clean: googletest/clean
 .PHONY : clean
+
+#=============================================================================
+# Directory level rules for directory external/cxxopts
+
+# Recursive "all" directory target.
+external/cxxopts/all: external/cxxopts/include/all
+.PHONY : external/cxxopts/all
+
+# Recursive "preinstall" directory target.
+external/cxxopts/preinstall: external/cxxopts/include/preinstall
+.PHONY : external/cxxopts/preinstall
+
+# Recursive "clean" directory target.
+external/cxxopts/clean: external/cxxopts/include/clean
+.PHONY : external/cxxopts/clean
+
+#=============================================================================
+# Directory level rules for directory external/cxxopts/include
+
+# Recursive "all" directory target.
+external/cxxopts/include/all:
+.PHONY : external/cxxopts/include/all
+
+# Recursive "preinstall" directory target.
+external/cxxopts/include/preinstall:
+.PHONY : external/cxxopts/include/preinstall
+
+# Recursive "clean" directory target.
+external/cxxopts/include/clean:
+.PHONY : external/cxxopts/include/clean
 
 #=============================================================================
 # Directory level rules for directory googletest
