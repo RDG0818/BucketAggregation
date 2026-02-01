@@ -56,39 +56,6 @@ inline long get_peak_memory_kb() {
   return 0; 
 }
 
-inline void print_stats(const SearchStats& stats, std::ostream& out = std::cout) {
-  out << "Search Statistics:\n";
-  
-  out << "[Macro Metrics]\n";
-  out << "Total Time     : " << stats.total_time_ms << " ms\n";
-  if (stats.solution_cost >= 0) {
-    out << "Solution Cost  : " << stats.solution_cost << "\n";
-  } else {
-    out << "Solution Cost  : Not Found\n";
-  }
-  out << "Nodes Expanded : " << stats.nodes_expanded << "\n";
-  out << "Nodes Generated: " << stats.nodes_generated << "\n";
-  if (stats.memory_peak_kb > 0) {
-    out << "Peak Memory    : " << stats.memory_peak_kb / 1024.0 << " MB\n";
-  }
-
-  out << "\n[Queue Micro-Benchmarks]\n";
-  auto print_row = [&](const std::string& label, uint64_t count, double total_ns) {
-    if (count == 0) return;
-    double avg_ns = total_ns / count;
-    out << std::left << std::setw(15) << label 
-      << "| Count: " << std::setw(10) << count 
-      << "| Total: " << std::setw(10) << std::fixed << std::setprecision(0) << total_ns << " ns"
-      << "| Avg: " << std::setprecision(1) << avg_ns << " ns\n";
-  };
-
-  print_row("Enqueue", stats.count_enqueue, stats.time_enqueue);
-  print_row("Dequeue", stats.count_dequeue, stats.time_dequeue);
-  print_row("Rebuild", stats.count_rebuild, stats.time_rebuild);
-  
-  out << "\n";
-}
-
 // SFINAE helper to check if Q has rebuild method
 template<typename Q, typename F, typename = std::void_t<>>
 struct has_rebuild : std::false_type {};

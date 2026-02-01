@@ -30,7 +30,7 @@ This effectively prioritizes nodes that have the greatest potential to reduce th
 
 #### Binary Heap (```include/queues/binary_heap.h```):
 
-#### Indexed Binary Heap (```include/queues/indexed_binary_heap.h```):
+#### Indexed D-ary Heap (```include/queues/indexed_d_ary_heap.h```):
 
 #### Bucket Queue (```include/queues/bucket_queue.h```):
 
@@ -53,7 +53,7 @@ $$h(n) = |x_{goal} - x_n| + |y_{goal} - y_n|$$
 
 A 15-puzzle ($4 \times 4$ grid) focused on moving tiles into a specific goal configuration. The heuristic used is the Manhattan Distance summed across all times relative to their target positions in the goal state. 
 <p align="center">
-<img src="./images/15_puzzle.png" width="50%" />
+<img src="./images/15_puzzle.png" width="30%" />
 </p>
 To solve the puzzle, the numbers must be rearranged into numerical order from left to right, top to bottom.
 
@@ -101,10 +101,6 @@ Note: depending on your CPU, the benchmark could take anywhere from several seco
 ## Future Work
 
 - Hybrid Expansion Strategy Demo
-
-TODO: 
-Figure out full structure/where things are handled in codebase
-
 
 Aggregation of the secondary buckets for more optimal memory allocation (my original idea)
 

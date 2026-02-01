@@ -44,22 +44,38 @@ int get_terminal_width() {
 
 // Functions to print the results table
 void print_header() {
-    std::cout << "\033[1m" << std::left << std::setw(45) << "Algorithm"
-              << std::setw(20) << "Solution Cost"
-              << std::setw(20) << "Nodes Expanded"
-              << std::setw(20) << "Nodes Generated"
-              << std::setw(20) << "Time (ms)"
-              << std::setw(20) << "Memory (KB)" << "\033[0m" << std::endl;
+    std::cout << "\033[1m" << std::left 
+              << std::setw(45) << "Algorithm"
+              << std::setw(15) << "Sol Cost"
+              << std::setw(15) << "Expanded"
+              << std::setw(15) << "Generated"
+              << std::setw(15) << "Time (ms)"
+              << std::setw(15) << "Mem (KB)"
+              << "\033[0m" << std::endl;
     std::cout << std::string(get_terminal_width(), '-') << std::endl;
 }
 
 void print_row(const BenchmarkResult& result) {
-    std::cout << std::left << std::setw(45) << result.description
-              << std::setw(20) << result.stats.solution_cost
-              << std::setw(20) << result.stats.nodes_expanded
-              << std::setw(20) << result.stats.nodes_generated
-              << std::setw(20) << std::fixed << std::setprecision(3) << result.stats.total_time_ms
-              << std::setw(20) << result.stats.memory_peak_kb << std::endl;
+    const auto& s = result.stats;
+    std::cout << std::left 
+              << std::setw(45) << result.description
+              << std::setw(15) << s.solution_cost
+              << std::setw(15) << s.nodes_expanded
+              << std::setw(15) << s.nodes_generated
+              << std::setw(15) << std::fixed << std::setprecision(3) << s.total_time_ms
+              << std::setw(15) << s.memory_peak_kb
+              << std::endl;
+
+    double avg_enq = s.count_enqueue > 0 ? s.time_enqueue / s.count_enqueue : 0;
+    double avg_deq = s.count_dequeue > 0 ? s.time_dequeue / s.count_dequeue : 0;
+    double avg_reb = s.count_rebuild > 0 ? s.time_rebuild / s.count_rebuild : 0;
+
+    std::cout << "  \033[2m" // dim color
+              << "Queue Ops -> "
+              << "Enq: " << s.count_enqueue << " (" << std::fixed << std::setprecision(1) << avg_enq << " ns), "
+              << "Deq: " << s.count_dequeue << " (" << std::fixed << std::setprecision(1) << avg_deq << " ns), "
+              << "Reb: " << s.count_rebuild << " (" << std::fixed << std::setprecision(1) << avg_reb << " ns)"
+              << "\033[0m" << std::endl;
 }
 
 
@@ -77,7 +93,7 @@ struct ANAStarPriorityCalculator {
 
 // Main benchmark runner
 template <template<typename, typename> class Algorithm, typename Environment, typename Queue>
-void run_benchmark(Environment& env, Queue& queue, const std::string& description) {
+BenchmarkResult run_benchmark(Environment& env, Queue& queue, const std::string& description) {
     utils::SearchStats stats;
     env.reset_search();
     queue.clear();
@@ -109,7 +125,7 @@ void run_benchmark(Environment& env, Queue& queue, const std::string& descriptio
     stats.total_time_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
     stats.memory_peak_kb = utils::get_peak_memory_kb();
 
-    print_row({description, stats});
+    return {description, stats};
 }
 
 // Function to parse a range string like "0-9" or "5"
@@ -129,27 +145,62 @@ std::vector<int> parse_range(const std::string& s) {
 }
 
 template<typename Environment>
-void execute_benchmarks(Environment& env, const std::vector<std::string>& algorithms_to_run, uint32_t alpha, uint32_t beta) {
+void execute_benchmarks(Environment& env, const std::vector<std::string>& algorithms_to_run, uint32_t alpha, uint32_t beta, int d_ary) {
     print_header();
     for (const auto& algo_name : algorithms_to_run) {
         if (algo_name == "astar_binary") {
             BinaryHeap<uint32_t> heap;
-            run_benchmark<AStar>(env, heap, "A* with BinaryHeap");
+            print_row(run_benchmark<AStar>(env, heap, "A* with BinaryHeap"));
         } else if (algo_name == "anytime_astar_binary") {
             BinaryHeap<uint32_t> heap;
-            run_benchmark<AnytimeAStar>(env, heap, "Anytime A* with BinaryHeap");
+            print_row(run_benchmark<AnytimeAStar>(env, heap, "Anytime A* with BinaryHeap"));
         } else if (algo_name == "anastar_binary") {
             BinaryHeap<double, std::less<double>> heap;
-            run_benchmark<ANAStar>(env, heap, "ANA* with BinaryHeap");
+            print_row(run_benchmark<ANAStar>(env, heap, "ANA* with BinaryHeap"));
         } else if (algo_name == "anastar_bucket") {
             ANAStarPriorityCalculator calculator;
-            BucketHeap<ANAStarPriorityCalculator, std::less<double>> bucket_heap(calculator);
-            run_benchmark<ANAStar>(env, bucket_heap, "ANA* with BucketHeap");
+            std::string desc = "ANA* with BucketHeap (D=" + std::to_string(d_ary) + ")";
+            switch (d_ary) {
+                case 2: {
+                    BucketHeap<ANAStarPriorityCalculator, std::less<double>, 2> bucket_heap(calculator);
+                    print_row(run_benchmark<ANAStar>(env, bucket_heap, desc));
+                    break;
+                }
+                case 4: {
+                    BucketHeap<ANAStarPriorityCalculator, std::less<double>, 4> bucket_heap(calculator);
+                    print_row(run_benchmark<ANAStar>(env, bucket_heap, desc));
+                    break;
+                }
+                case 8: {
+                    BucketHeap<ANAStarPriorityCalculator, std::less<double>, 8> bucket_heap(calculator);
+                    print_row(run_benchmark<ANAStar>(env, bucket_heap, desc));
+                    break;
+                }
+                default:
+                    std::cerr << "Unsupported D value for BucketHeap: " << d_ary << std::endl;
+            }
         } else if (algo_name == "anastar_realbucket") {
             ANAStarPriorityCalculator calculator;
-            RealBucketHeap<ANAStarPriorityCalculator, std::less<double>> real_bucket_heap(calculator, alpha, beta);
-            std::string desc = "ANA* with RealBucketHeap (a=" + std::to_string(alpha) + ", b=" + std::to_string(beta) + ")";
-            run_benchmark<ANAStar>(env, real_bucket_heap, desc);
+            std::string desc = "ANA* with RealBucketHeap (a=" + std::to_string(alpha) + ", b=" + std::to_string(beta) + ", D=" + std::to_string(d_ary) + ")";
+            switch (d_ary) {
+                case 2: {
+                    RealBucketHeap<ANAStarPriorityCalculator, std::less<double>, 2> real_bucket_heap(calculator, alpha, beta);
+                    print_row(run_benchmark<ANAStar>(env, real_bucket_heap, desc));
+                    break;
+                }
+                case 4: {
+                    RealBucketHeap<ANAStarPriorityCalculator, std::less<double>, 4> real_bucket_heap(calculator, alpha, beta);
+                    print_row(run_benchmark<ANAStar>(env, real_bucket_heap, desc));
+                    break;
+                }
+                case 8: {
+                    RealBucketHeap<ANAStarPriorityCalculator, std::less<double>, 8> real_bucket_heap(calculator, alpha, beta);
+                    print_row(run_benchmark<ANAStar>(env, real_bucket_heap, desc));
+                    break;
+                }
+                default:
+                    std::cerr << "Unsupported D value for RealBucketHeap: " << d_ary << std::endl;
+            }
         }
     }
     std::cout << std::endl;
@@ -169,6 +220,7 @@ int main(int argc, char** argv) {
         ("k,korf", "Korf100 puzzle range (e.g., 0-9 or 5)", cxxopts::value<std::string>()->default_value("0"))
         ("a,alpha", "Default alpha for RealBucketHeap", cxxopts::value<uint32_t>()->default_value("1"))
         ("b,beta", "Default beta for RealBucketHeap", cxxopts::value<uint32_t>()->default_value("10"))
+        ("d,d-ary", "Arity D for D-ary heap in BucketHeaps", cxxopts::value<int>()->default_value("2"))
         ("grid-alpha", "Alpha for Grid env", cxxopts::value<uint32_t>())
         ("grid-beta", "Beta for Grid env", cxxopts::value<uint32_t>())
         ("pancake-alpha", "Alpha for Pancake env", cxxopts::value<uint32_t>())
@@ -188,6 +240,7 @@ int main(int argc, char** argv) {
 
     uint32_t default_alpha = result["alpha"].as<uint32_t>();
     uint32_t default_beta = result["beta"].as<uint32_t>();
+    int d_ary = result["d-ary"].as<int>();
 
     uint32_t grid_alpha = result.count("grid-alpha") ? result["grid-alpha"].as<uint32_t>() : default_alpha;
     uint32_t grid_beta = result.count("grid-beta") ? result["grid-beta"].as<uint32_t>() : default_beta;
@@ -228,13 +281,13 @@ int main(int argc, char** argv) {
                       << result["grid-width"].as<int>() << "x" << result["grid-height"].as<int>()
                       << ")" << "\033[0m\n" << std::string(term_width, '=') << "\n";
             GridEnvironment grid_env(result["grid-width"].as<int>(), result["grid-height"].as<int>(), 42);
-            execute_benchmarks(grid_env, algorithms_to_run, grid_alpha, grid_beta);
+            execute_benchmarks(grid_env, algorithms_to_run, grid_alpha, grid_beta, d_ary);
         } else if (env_name == "pancake") {
             std::cout << "\n\033[1m" << "Pancake Puzzle (" << result["pancakes"].as<int>() << " pancakes)" 
                       << "\033[0m\n" << std::string(term_width, '=') << "\n";
             PancakeEnvironment pancake_env(result["pancakes"].as<int>(), 50000000);
             pancake_env.generate_start_node();
-            execute_benchmarks(pancake_env, algorithms_to_run, pancake_alpha, pancake_beta);
+            execute_benchmarks(pancake_env, algorithms_to_run, pancake_alpha, pancake_beta, d_ary);
         } else if (env_name == "korf100") {
             std::cout << "\n\033[1m" << "Sliding Tile Puzzle (Korf100)" << "\033[0m\n" << std::string(term_width, '=') << "\n";
             auto puzzle_indices = parse_range(result["korf"].as<std::string>());
@@ -242,7 +295,7 @@ int main(int argc, char** argv) {
                 std::cout << "\033[1;34m" << "Running puzzle #" << index << "\033[0m" << std::endl;
                 try {
                     SlidingTileEnvironment tile_env(index, "korf100.txt", 20000000);
-                    execute_benchmarks(tile_env, algorithms_to_run, korf_alpha, korf_beta);
+                    execute_benchmarks(tile_env, algorithms_to_run, korf_alpha, korf_beta, d_ary);
                 } catch (const std::exception& e) {
                     std::cerr << "Error setting up SlidingTileEnvironment for puzzle #" << index << ": " << e.what() << std::endl;
                 }

@@ -4,10 +4,11 @@
 
 #include "environments/node.h"
 #include "queues/indexed_binary_heap.h"
+#include "queues/indexed_d_ary_heap.h"
 #include "queues/two_level_bucket_queue.h"
 #include "utils/utils.h"
 
-template <typename PriorityCalculator, typename Compare = std::greater<double>>
+template <typename PriorityCalculator, typename Compare = std::greater<double>, int D = 2>
 class RealBucketHeap {
 
 public:
@@ -84,7 +85,7 @@ public:
 
 private:
   TwoLevelBucketQueue buckets_;
-  IndexedBinaryHeap<double, Compare> primary_heap_;
+  IndexedDaryHeap<double, D, Compare> primary_heap_;
   PriorityCalculator& calculator_;
   uint32_t alpha_;
   uint32_t beta_;
