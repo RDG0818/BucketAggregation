@@ -3,7 +3,6 @@
 #pragma once
 
 #include "environments/node.h"
-#include "queues/indexed_binary_heap.h"
 #include "queues/indexed_d_ary_heap.h"
 #include "queues/two_level_bucket_queue.h"
 #include "utils/utils.h"

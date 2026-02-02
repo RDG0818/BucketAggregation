@@ -15,6 +15,8 @@
 #include <thread>
 #include <atomic>
 #include <chrono>
+#include <type_traits>
+#include <sstream>
 
 // Algorithms
 #include "algorithms/a_star.h"
@@ -23,7 +25,6 @@
 #include "environments/environments.h"
 #include "queues/binary_heap.h"
 #include "queues/bucket_queue.h"
-#include "queues/indexed_binary_heap.h"
 #include "queues/bucket_heap.h"
 #include "queues/real_bucket_heap.h"
 #include "queues/two_level_bucket_queue.h"
@@ -131,6 +132,7 @@ BenchmarkResult run_benchmark(Environment& env, Queue& queue, const std::string&
 // Function to parse a range string like "0-9" or "5"
 std::vector<int> parse_range(const std::string& s) {
     std::vector<int> numbers;
+    if (s.empty()) return numbers;
     size_t dash_pos = s.find('-');
     if (dash_pos != std::string::npos) {
         int start = std::stoi(s.substr(0, dash_pos));
@@ -146,7 +148,6 @@ std::vector<int> parse_range(const std::string& s) {
 
 template<typename Environment>
 void execute_benchmarks(Environment& env, const std::vector<std::string>& algorithms_to_run, uint32_t alpha, uint32_t beta, int d_ary) {
-    print_header();
     for (const auto& algo_name : algorithms_to_run) {
         if (algo_name == "astar_binary") {
             BinaryHeap<uint32_t> heap;
@@ -203,7 +204,33 @@ void execute_benchmarks(Environment& env, const std::vector<std::string>& algori
             }
         }
     }
-    std::cout << std::endl;
+}
+
+template<typename T>
+std::vector<T> parse_list(const std::string& s) {
+    std::vector<T> result;
+    if (s.empty()) return result;
+    std::stringstream ss(s);
+    std::string item;
+    while (std::getline(ss, item, ',')) {
+        if constexpr (std::is_same_v<T, std::string>) {
+            if (!item.empty()) result.push_back(item);
+        } else if constexpr (std::is_integral_v<T>) {
+            if (!item.empty()) result.push_back(static_cast<T>(std::stoll(item)));
+        } else {
+            if (!item.empty()) result.push_back(static_cast<T>(std::stod(item)));
+        }
+    }
+    if (result.empty() && !s.empty()) {
+        if constexpr (std::is_same_v<T, std::string>) {
+            result.push_back(s);
+        } else if constexpr (std::is_integral_v<T>) {
+            result.push_back(static_cast<T>(std::stoll(s)));
+        } else {
+            result.push_back(static_cast<T>(std::stod(s)));
+        }
+    }
+    return result;
 }
 
 
@@ -218,15 +245,19 @@ int main(int argc, char** argv) {
         ("grid-width", "Grid environment width", cxxopts::value<int>()->default_value("1000"))
         ("grid-height", "Grid environment height", cxxopts::value<int>()->default_value("1000"))
         ("k,korf", "Korf100 puzzle range (e.g., 0-9 or 5)", cxxopts::value<std::string>()->default_value("0"))
-        ("a,alpha", "Default alpha for RealBucketHeap", cxxopts::value<uint32_t>()->default_value("1"))
-        ("b,beta", "Default beta for RealBucketHeap", cxxopts::value<uint32_t>()->default_value("10"))
-        ("d,d-ary", "Arity D for D-ary heap in BucketHeaps", cxxopts::value<int>()->default_value("2"))
-        ("grid-alpha", "Alpha for Grid env", cxxopts::value<uint32_t>())
-        ("grid-beta", "Beta for Grid env", cxxopts::value<uint32_t>())
-        ("pancake-alpha", "Alpha for Pancake env", cxxopts::value<uint32_t>())
-        ("pancake-beta", "Beta for Pancake env", cxxopts::value<uint32_t>())
-        ("korf-alpha", "Alpha for Korf100 env", cxxopts::value<uint32_t>())
-        ("korf-beta", "Beta for Korf100 env", cxxopts::value<uint32_t>())
+        
+        ("grid-alphas", "CSV for Grid alpha", cxxopts::value<std::string>()->default_value("1"))
+        ("grid-betas", "CSV for Grid beta", cxxopts::value<std::string>()->default_value("10"))
+        ("grid-ds", "CSV for Grid D", cxxopts::value<std::string>()->default_value("2"))
+
+        ("pancake-alphas", "CSV for Pancake alpha", cxxopts::value<std::string>()->default_value("1"))
+        ("pancake-betas", "CSV for Pancake beta", cxxopts::value<std::string>()->default_value("2"))
+        ("pancake-ds", "CSV for Pancake D", cxxopts::value<std::string>()->default_value("2"))
+
+        ("korf-alphas", "CSV for Korf alpha", cxxopts::value<std::string>()->default_value("1"))
+        ("korf-betas", "CSV for Korf beta", cxxopts::value<std::string>()->default_value("10"))
+        ("korf-ds", "CSV for Korf D", cxxopts::value<std::string>()->default_value("2"))
+
         ("e,environments", "Comma-separated list of environments (grid, pancake, korf100)", cxxopts::value<std::string>()->default_value("grid,pancake,korf100"))
         ("l,algorithms", "Comma-separated list of algorithms to run", cxxopts::value<std::string>()->default_value("astar_binary,anytime_astar_binary,anastar_binary,anastar_bucket,anastar_realbucket"))
         ("h,help", "Print usage");
@@ -238,40 +269,30 @@ int main(int argc, char** argv) {
         return 0;
     }
 
-    uint32_t default_alpha = result["alpha"].as<uint32_t>();
-    uint32_t default_beta = result["beta"].as<uint32_t>();
-    int d_ary = result["d-ary"].as<int>();
-
-    uint32_t grid_alpha = result.count("grid-alpha") ? result["grid-alpha"].as<uint32_t>() : default_alpha;
-    uint32_t grid_beta = result.count("grid-beta") ? result["grid-beta"].as<uint32_t>() : default_beta;
-
-    uint32_t pancake_alpha = result.count("pancake-alpha") ? result["pancake-alpha"].as<uint32_t>() : default_alpha;
-    uint32_t pancake_beta = result.count("pancake-beta") ? result["pancake-beta"].as<uint32_t>() : default_beta;
-
-    uint32_t korf_alpha = result.count("korf-alpha") ? result["korf-alpha"].as<uint32_t>() : default_alpha;
-    uint32_t korf_beta = result.count("korf-beta") ? result["korf-beta"].as<uint32_t>() : default_beta;
-
     // Parse algorithm list
     std::vector<std::string> algorithms_to_run;
     std::string algo_str = result["algorithms"].as<std::string>();
     if (algo_str == "all") {
         algorithms_to_run = {"astar_binary", "anytime_astar_binary", "anastar_binary", "anastar_bucket", "anastar_realbucket"};
     } else {
-        std::stringstream ss(algo_str);
-        std::string item;
-        while (std::getline(ss, item, ',')) {
-            algorithms_to_run.push_back(item);
+        algorithms_to_run = parse_list<std::string>(algo_str);
+    }
+    
+    std::vector<std::string> once_off_algos;
+    std::vector<std::string> d_sweep_algos;
+    std::vector<std::string> full_sweep_algos;
+    for(const auto& algo : algorithms_to_run) {
+        if (algo == "anastar_realbucket") {
+            full_sweep_algos.push_back(algo);
+        } else if (algo == "anastar_bucket") {
+            d_sweep_algos.push_back(algo);
+        } else {
+            once_off_algos.push_back(algo);
         }
     }
 
     // Parse environment list
-    std::string env_str = result["environments"].as<std::string>();
-    std::stringstream ss(env_str);
-    std::string item;
-    std::vector<std::string> envs_to_run;
-    while (std::getline(ss, item, ',')) {
-        envs_to_run.push_back(item);
-    }
+    std::vector<std::string> envs_to_run = parse_list<std::string>(result["environments"].as<std::string>());
     
     int term_width = get_terminal_width();
 
@@ -280,25 +301,102 @@ int main(int argc, char** argv) {
             std::cout << "\n\033[1m" << "Grid Environment (" 
                       << result["grid-width"].as<int>() << "x" << result["grid-height"].as<int>()
                       << ")" << "\033[0m\n" << std::string(term_width, '=') << "\n";
+            print_header();
             GridEnvironment grid_env(result["grid-width"].as<int>(), result["grid-height"].as<int>(), 42);
-            execute_benchmarks(grid_env, algorithms_to_run, grid_alpha, grid_beta, d_ary);
+            
+            if (!once_off_algos.empty()) {
+                execute_benchmarks(grid_env, once_off_algos, 0, 0, 0);
+            }
+            
+            if (!d_sweep_algos.empty()) {
+                auto ds = parse_list<int>(result["grid-ds"].as<std::string>());
+                for (int d : ds) {
+                    execute_benchmarks(grid_env, d_sweep_algos, 0, 0, d);
+                }
+            }
+
+            if (!full_sweep_algos.empty()) {
+                auto alphas = parse_list<uint32_t>(result["grid-alphas"].as<std::string>());
+                auto betas = parse_list<uint32_t>(result["grid-betas"].as<std::string>());
+                auto ds = parse_list<int>(result["grid-ds"].as<std::string>());
+                for (int d : ds) {
+                    for (uint32_t alpha : alphas) {
+                        for (uint32_t beta : betas) {
+                            execute_benchmarks(grid_env, full_sweep_algos, alpha, beta, d);
+                        }
+                    }
+                }
+            }
+            std::cout << std::endl;
+
         } else if (env_name == "pancake") {
             std::cout << "\n\033[1m" << "Pancake Puzzle (" << result["pancakes"].as<int>() << " pancakes)" 
                       << "\033[0m\n" << std::string(term_width, '=') << "\n";
+            print_header();
             PancakeEnvironment pancake_env(result["pancakes"].as<int>(), 50000000);
             pancake_env.generate_start_node();
-            execute_benchmarks(pancake_env, algorithms_to_run, pancake_alpha, pancake_beta, d_ary);
+
+            if (!once_off_algos.empty()) {
+                execute_benchmarks(pancake_env, once_off_algos, 0, 0, 0);
+            }
+
+            if (!d_sweep_algos.empty()) {
+                auto ds = parse_list<int>(result["pancake-ds"].as<std::string>());
+                for (int d : ds) {
+                    execute_benchmarks(pancake_env, d_sweep_algos, 0, 0, d);
+                }
+            }
+            
+            if (!full_sweep_algos.empty()) {
+                auto alphas = parse_list<uint32_t>(result["pancake-alphas"].as<std::string>());
+                auto betas = parse_list<uint32_t>(result["pancake-betas"].as<std::string>());
+                auto ds = parse_list<int>(result["pancake-ds"].as<std::string>());
+                for (int d : ds) {
+                    for (uint32_t alpha : alphas) {
+                        for (uint32_t beta : betas) {
+                            execute_benchmarks(pancake_env, full_sweep_algos, alpha, beta, d);
+                        }
+                    }
+                }
+            }
+            std::cout << std::endl;
+
         } else if (env_name == "korf100") {
             std::cout << "\n\033[1m" << "Sliding Tile Puzzle (Korf100)" << "\033[0m\n" << std::string(term_width, '=') << "\n";
+            
             auto puzzle_indices = parse_range(result["korf"].as<std::string>());
             for (int index : puzzle_indices) {
                 std::cout << "\033[1;34m" << "Running puzzle #" << index << "\033[0m" << std::endl;
+                print_header();
                 try {
                     SlidingTileEnvironment tile_env(index, "korf100.txt", 20000000);
-                    execute_benchmarks(tile_env, algorithms_to_run, korf_alpha, korf_beta, d_ary);
+
+                    if (!once_off_algos.empty()) {
+                        execute_benchmarks(tile_env, once_off_algos, 0, 0, 0);
+                    }
+                    
+                    auto ds = parse_list<int>(result["korf-ds"].as<std::string>());
+                    if (!d_sweep_algos.empty()) {
+                        for (int d : ds) {
+                            execute_benchmarks(tile_env, d_sweep_algos, 0, 0, d);
+                        }
+                    }
+
+                    if (!full_sweep_algos.empty()) {
+                        auto alphas = parse_list<uint32_t>(result["korf-alphas"].as<std::string>());
+                        auto betas = parse_list<uint32_t>(result["korf-betas"].as<std::string>());
+                        for (int d : ds) {
+                            for (uint32_t alpha : alphas) {
+                                for (uint32_t beta : betas) {
+                                    execute_benchmarks(tile_env, full_sweep_algos, alpha, beta, d);
+                                }
+                            }
+                        }
+                    }
                 } catch (const std::exception& e) {
                     std::cerr << "Error setting up SlidingTileEnvironment for puzzle #" << index << ": " << e.what() << std::endl;
                 }
+                std::cout << std::endl;
             }
         }
     }

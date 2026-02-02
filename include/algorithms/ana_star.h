@@ -12,11 +12,11 @@
 template<typename T>
 struct is_bucket_heap : std::false_type {};
 
-template<typename PC, typename C>
-struct is_bucket_heap<BucketHeap<PC, C>> : std::true_type {};
+template<typename PC, typename C, int D>
+struct is_bucket_heap<BucketHeap<PC, C, D>> : std::true_type {};
 
-template<typename PC, typename C>
-struct is_bucket_heap<RealBucketHeap<PC, C>> : std::true_type {};
+template<typename PC, typename C, int D>
+struct is_bucket_heap<RealBucketHeap<PC, C, D>> : std::true_type {};
 
 template<typename Q>
 struct is_bucket_heap<utils::ProfiledQueue<Q>> : is_bucket_heap<Q> {};
@@ -66,7 +66,6 @@ void solve() {
       if (u_g < G_upper_) {
         G_upper_ = static_cast<double>(u_g);
         if (stats_) stats_->solution_cost = G_upper_;
-
           if constexpr (is_bucket_heap<PQ>::value) {
             priority_queue_.get_calculator().set_g_upper(G_upper_);
             priority_queue_.rebuild();

@@ -30,7 +30,7 @@ add_library(core_lib ${SRC_FILES})
 add_executable(main src/main.cpp)
 target_link_libraries(main PRIVATE core_lib cxxopts::cxxopts) # Links main executable with files in core_lib
 
-target_include_directories(core_lib PUBLIC include) # Adds include/ to the include path
+target_include_directories(core_lib PUBLIC include external/parallel_hashmap) # Adds include/ to the include path
 
 # Tests
 enable_testing()
@@ -41,7 +41,6 @@ tests/test_grid_environment.cpp
 tests/test_pancake_environment.cpp 
 tests/test_sliding_tile_environment.cpp
 tests/test_binary_heap.cpp
-tests/test_indexed_binary_heap.cpp
 tests/test_bucket_queue.cpp
 tests/test_bucket_heap.cpp
 tests/test_a_star.cpp

@@ -4,15 +4,20 @@
 #include <vector>
 #include <limits>
 #include <algorithm>
+#include <stdexcept>
 
-// Added 'D' template parameter, default to 4 (Arity)
-template <typename PriorityType = double, int D = 4, typename Compare = std::greater<PriorityType>>
+template <typename PriorityType = double, int D = 2, typename Compare = std::greater<PriorityType>>
 class IndexedDaryHeap {
 public:
 
   IndexedDaryHeap() = default;
 
   void push(uint32_t id, PriorityType priority) {
+
+    if (id == INF_COST) {
+      throw std::runtime_error("Attempted to push INF_COST onto the heap.");
+    }
+
     if (id >= id_to_index_.size()) {
       size_t new_size = std::max<size_t>(id + 1, id_to_index_.size() * 2);
       id_to_index_.resize(new_size, -1);
@@ -71,7 +76,7 @@ public:
       item.priority = f(item.id);
     }
     if (heap_.size() > 1) {
-      for (int i = (static_cast<int>(heap_.size()) - 2) / D; i >= 0; i--) {
+      for (int i = (static_cast<int>(heap_.size()) - 1) / D; i >= 0; i--) {
         sift_down(i);
       }
     }

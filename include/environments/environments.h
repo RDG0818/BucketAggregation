@@ -10,9 +10,9 @@
 #include <random>
 #include <sstream>
 #include <stdexcept>
-#include <unordered_map>
 
 #include "node.h"
+#include "phmap.h"
 
 class GridEnvironment { 
 
@@ -108,7 +108,7 @@ private:
   NodePool pool_;
 
   std::vector<T> node_states_; // node_handle -> state_id
-  std::unordered_map<T, uint32_t, StateHash> lookup_table_;
+  phmap::flat_hash_map<T, uint32_t, StateHash> lookup_table_;
 
   T start_state_;
   T goal_state_;
@@ -163,7 +163,7 @@ private:
   NodePool pool_;
 
   std::vector<T> node_states_; 
-  std::unordered_map<T, uint32_t> lookup_table_;
+  phmap::flat_hash_map<T, uint32_t> lookup_table_;
 
   T start_state_;
   T goal_state_;

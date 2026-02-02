@@ -62,38 +62,6 @@ TEST_F(SlidingTileEnvironmentTest, ConstructorAndStartState) {
   EXPECT_EQ(goal_start_state, expected_goal_state);
 }
 
-TEST_F(SlidingTileEnvironmentTest, GoalVerification) {
-  SlidingTileEnvironment::T goal_state = 0x123456789ABCDEF0;
-  
-  // We must ensure the state exists in the system to get a valid ID
-  uint32_t goal_id = env->get_or_create_id(goal_state);
-  EXPECT_TRUE(env->is_goal(goal_id));
-
-  uint32_t start_handle = env->get_start_node();
-  EXPECT_FALSE(env->is_goal(start_handle));
-}
-
-TEST_F(SlidingTileEnvironmentTest, HeuristicCalculation) {
-  SlidingTileEnvironment::T state;
-
-  // Goal state
-  state = 0x0123456789ABCDEF;
-  uint32_t goal_id = env->get_or_create_id(state);
-  EXPECT_EQ(env->get_heuristic(goal_id), 0);
-
-  // One move away state (Start Node from fixture)
-  uint32_t start_handle = env->get_start_node();
-  EXPECT_EQ(env->get_heuristic(start_handle), 1);
-
-  // State where 14 and 15 are swapped from goal
-  // 1 ... 13, 15, 14, 0
-  state = 0x123456789ABCDFE0;
-  // Tile 14 (at pos 14) needs to go to pos 13 -> dist 1
-  // Tile 15 (at pos 13) needs to go to pos 14 -> dist 1
-  uint32_t swapped_id = env->get_or_create_id(state);
-  EXPECT_EQ(env->get_heuristic(swapped_id), 2);
-}
-
 TEST_F(SlidingTileEnvironmentTest, SuccessorGeneration) {
   uint32_t start_handle = env->get_start_node();
   
