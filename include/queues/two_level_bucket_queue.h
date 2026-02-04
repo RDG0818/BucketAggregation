@@ -8,14 +8,87 @@
 
 #include "environments/node.h"
 
+struct Block {
+  static constexpr size_t SIZE = 126; // total size: 126 x 4 + 8 = 512 bytes
+  uint32_t elements[SIZE];
+  Block* next = nullptr;
+};
+
+class BlockPool {
+
+public:
+
+  BlockPool(size_t chunk_size = 1000, size_t initial_capacity = 0) 
+  : chunk_size_(chunk_size) {
+    if (initial_capacity > 0) {
+      reserve(initial_capacity);
+    }
+  };
+
+  ~BlockPool() = default;
+
+  Block* allocate() {
+    if (!free_list_) {
+      allocate_chunk();
+    }
+    Block* block = free_list_;
+    free_list_ = free_list_->next;
+    block->next = nullptr;
+    return block;
+  }
+
+  void deallocate(Block* block) {
+    block->next = free_list_;
+    free_list_ = block;
+  }
+
+  void reserve(size_t n_blocks) {
+    while (capacity_ < n_blocks) {
+      allocate_chunk();
+    }
+  }
+
+  void clear() {
+    free_list_ = nullptr;
+    capacity_ = 0;
+    chunks_.clear();
+  }
+
+private:
+
+  void allocate_chunk() {
+    auto chunk = std::make_unique<Block[]>(chunk_size_);
+
+    for (size_t i = 0; i < chunk_size_ - 1; i++) {
+      chunk[i].next = &chunk[i + 1];
+    }
+    chunk[chunk_size_ - 1].next = free_list_;
+    free_list_ = &chunk[0];
+
+    chunks_.push_back(std::move(chunk));
+    capacity_ += chunk_size_;
+  }
+
+  size_t chunk_size_;
+  size_t capacity_ = 0;
+  Block* free_list_ = nullptr;
+  std::vector<std::unique_ptr<Block[]>> chunks_;
+
+};
+
 class TwoLevelBucketQueue {
 
 private:
 
-  using SecondaryBucket = std::vector<uint32_t>; 
+  struct SecondaryBucket {
+    Block* head = nullptr;
+    uint32_t top = 0;
+
+    bool empty() const {return head == nullptr; };
+  };
 
   struct PrimaryBucket {
-    std::vector<std::unique_ptr<SecondaryBucket>> h_buckets;
+    std::vector<SecondaryBucket> h_buckets;
     uint32_t h_min = INF_COST;
     size_t count = 0;
   };
@@ -23,7 +96,7 @@ private:
 public:
 
   TwoLevelBucketQueue(uint32_t f_cap_hint = 1024) 
-  : f_min_(INF_COST), count_(0) {
+  : f_min_(INF_COST), count_(0), pool_(1000, 1000) {
     f_buckets_.reserve(f_cap_hint);
   }
 
@@ -40,11 +113,17 @@ public:
       p_bucket.h_buckets.resize(new_size);
     }
 
-    if (!p_bucket.h_buckets[h]) {
-      p_bucket.h_buckets[h] = std::make_unique<SecondaryBucket>();
+    auto& s_bucket = p_bucket.h_buckets[h];
+
+    if (!s_bucket.head || s_bucket.top == Block::SIZE) {
+      Block* new_block = pool_.allocate();
+      new_block->next = s_bucket.head;
+      s_bucket.head = new_block;
+      s_bucket.top = 0;
     }
 
-    p_bucket.h_buckets[h]->push_back(id);
+    s_bucket.head->elements[s_bucket.top++] = id;
+
     p_bucket.count++;
     count_++;
 
@@ -64,29 +143,7 @@ public:
       return INF_COST;
     }
 
-    auto& p_bucket = f_buckets_[f_min_];
-
-    while (p_bucket.h_min < p_bucket.h_buckets.size() &&
-          (!p_bucket.h_buckets[p_bucket.h_min] || p_bucket.h_buckets[p_bucket.h_min]->empty())) {
-        p_bucket.h_min++;
-    }
-    
-    uint32_t id = p_bucket.h_buckets[p_bucket.h_min]->back();
-    p_bucket.h_buckets[p_bucket.h_min]->pop_back();
-
-    p_bucket.count--;
-    count_--;
-
-
-    if (p_bucket.count > 0 && p_bucket.h_buckets[p_bucket.h_min]->empty()) {
-      while (p_bucket.h_min < p_bucket.h_buckets.size() &&
-        (!p_bucket.h_buckets[p_bucket.h_min] || p_bucket.h_buckets[p_bucket.h_min]->empty())) {
-        p_bucket.h_min++;
-      }
-    }
-
-
-    return id;
+    return pop_from_bucket(f_buckets_[f_min_]);
   }
 
   uint32_t pop_from(uint32_t f) {
@@ -94,31 +151,7 @@ public:
       return NODE_NULL;
     }
 
-    auto& p_bucket = f_buckets_[f];
-
-    while (p_bucket.h_min < p_bucket.h_buckets.size() && 
-          (!p_bucket.h_buckets[p_bucket.h_min] || p_bucket.h_buckets[p_bucket.h_min]->empty())) {
-      p_bucket.h_min++;
-    }
-
-    if (p_bucket.h_min >= p_bucket.h_buckets.size()) {
-      return NODE_NULL;
-    }
-
-    uint32_t id = p_bucket.h_buckets[p_bucket.h_min]->back();
-    p_bucket.h_buckets[p_bucket.h_min]->pop_back();
-
-    p_bucket.count--;
-    count_--;
-
-    if (p_bucket.count > 0 && p_bucket.h_buckets[p_bucket.h_min]->empty()) {
-      while (p_bucket.h_min < p_bucket.h_buckets.size() &&
-        (!p_bucket.h_buckets[p_bucket.h_min] || p_bucket.h_buckets[p_bucket.h_min]->empty())) {
-        p_bucket.h_min++;
-      }
-    }
-
-    return id;
+    return pop_from_bucket(f_buckets_[f]);
   }
 
   size_t get_node_count(uint32_t f) const {
@@ -132,11 +165,14 @@ public:
   }
 
   uint32_t peek_top_node(uint32_t f, uint32_t h) const {
-    if (f >= f_buckets_.size() || h >= f_buckets_[f].h_buckets.size() || 
-        !f_buckets_[f].h_buckets[h] || f_buckets_[f].h_buckets[h]->empty()) {
+    if (f >= f_buckets_.size() || h >= f_buckets_[f].h_buckets.size()) {  
       return NODE_NULL;
     }
-    return f_buckets_[f].h_buckets[h]->back();
+
+    const auto& s_bucket = f_buckets_[f].h_buckets[h];
+    if (s_bucket.empty()) return NODE_NULL;
+
+    return s_bucket.head->elements[s_bucket.top - 1];
   }
 
   void set_f_min(uint32_t f) {
@@ -154,8 +190,43 @@ public:
   template <typename T> void rebuild(T) {}
 
 private:
-  std::vector<PrimaryBucket> f_buckets_;
 
+  uint32_t pop_from_bucket(PrimaryBucket& p_bucket) {
+    while(p_bucket.h_min < p_bucket.h_buckets.size() &&
+          p_bucket.h_buckets[p_bucket.h_min].empty()) {
+      p_bucket.h_min++;
+    }
+
+    if (p_bucket.h_min >= p_bucket.h_buckets.size()) {
+      return NODE_NULL;
+    }
+
+    auto& s_bucket = p_bucket.h_buckets[p_bucket.h_min];
+    uint32_t id = s_bucket.head->elements[--s_bucket.top];
+
+    if (s_bucket.top == 0) {
+      Block* old_head = s_bucket.head;
+      s_bucket.head = s_bucket.head->next;
+      pool_.deallocate(old_head);
+      
+      if (s_bucket.head) s_bucket.top = Block::SIZE;
+    }
+    
+    p_bucket.count--;
+    count_--;
+
+    if (p_bucket.count > 0 && s_bucket.empty()) {
+      while (p_bucket.h_min < p_bucket.h_buckets.size() &&
+             p_bucket.h_buckets[p_bucket.h_min].empty()) {
+        p_bucket.h_min++;
+      };
+    }
+
+    return id;
+  }
+
+  std::vector<PrimaryBucket> f_buckets_;
   uint32_t f_min_;
   size_t count_;
+  BlockPool pool_;
 };

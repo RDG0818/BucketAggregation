@@ -8,7 +8,7 @@ GridEnvironment::GridEnvironment(uint32_t w, uint32_t h, uint32_t seed) : w_(w),
     pool_.resize_state_space(total_states);
     std::mt19937 gen(seed);
     std::uniform_real_distribution<> obs_dist(0.0, 1.0); 
-    std::uniform_int_distribution<> cost_dist(1, 10);    
+    std::uniform_int_distribution<> cost_dist(1, 1);    
 
     float obstacle_pct = 0.20f;
 
