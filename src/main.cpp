@@ -75,7 +75,8 @@ void print_row(const BenchmarkResult& result) {
               << "Queue Ops -> "
               << "Enq: " << s.count_enqueue << " (" << std::fixed << std::setprecision(1) << avg_enq << " ns), "
               << "Deq: " << s.count_dequeue << " (" << std::fixed << std::setprecision(1) << avg_deq << " ns), "
-              << "Reb: " << s.count_rebuild << " (" << std::fixed << std::setprecision(1) << avg_reb << " ns)"
+              << "Reb: " << s.count_rebuild << " (" << std::fixed << std::setprecision(1) << avg_reb << " ns), "
+              << "Total Overhead: " << std::fixed << std::setprecision(3) << (s.time_enqueue + s.time_dequeue + s.time_rebuild) / 1000000.0 << " ms"
               << "\033[0m" << std::endl;
 }
 
