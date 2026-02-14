@@ -8,6 +8,7 @@
 #include "utils/utils.h"
 #include "queues/bucket_heap.h"
 #include "queues/real_bucket_heap.h"
+#include "queues/log_bucket_heap.h"
 
 template<typename T>
 struct is_bucket_heap : std::false_type {};
@@ -17,6 +18,9 @@ struct is_bucket_heap<BucketHeap<PC, C, D>> : std::true_type {};
 
 template<typename PC, typename C, int D>
 struct is_bucket_heap<RealBucketHeap<PC, C, D>> : std::true_type {};
+
+template<typename PC, typename C, int D>
+struct is_bucket_heap<LogBucketHeap<PC, C, D>> : std::true_type {};
 
 template<typename Q>
 struct is_bucket_heap<utils::ProfiledQueue<Q>> : is_bucket_heap<Q> {};

@@ -108,16 +108,14 @@ Note: depending on your CPU, the benchmark could take anywhere from several seco
 
 - Hybrid Expansion Strategy Demo
 
-Aggregation of the secondary buckets for more optimal memory allocation (my original idea)
-
 Bucket Hash Table (plus some faster implementation of a hash table) for faster hashing
-
-Block-List (unrolled linked list) for faster memory allocation than "new vector" in two level bucket queue
-
-4-ary Heaps replacement for indexed binary heap 
 
 Profile-Guided Optimization
 
+TODO: 
+- Add non lazy decrease key operation 
+- Implement "ordered set" from Fereday repo
+- Add other optimizations from Fereday repo
 
 
 ## License

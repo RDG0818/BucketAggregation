@@ -37,11 +37,6 @@ public:
     uint32_t best_f_idx = primary_heap_.top();
     uint32_t old_h_min_idx = buckets_.get_h_min(best_f_idx);
     uint32_t node_id = buckets_.pop_from(best_f_idx);
-    if (node_id == NODE_NULL) {
-    std::cout << "CRITICAL ERROR: Heap thinks bucket " << best_f_idx 
-              << " is valid, but TwoLevelBucketQueue returned NODE_NULL!" << std::endl;
-    exit(1);
-}
 
     if (buckets_.get_node_count(best_f_idx) == 0) {
       primary_heap_.remove(best_f_idx);

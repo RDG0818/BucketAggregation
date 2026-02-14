@@ -27,6 +27,7 @@
 #include "queues/bucket_queue.h"
 #include "queues/bucket_heap.h"
 #include "queues/real_bucket_heap.h"
+#include "queues/log_bucket_heap.h"
 #include "queues/two_level_bucket_queue.h"
 #include "utils/utils.h"
 
@@ -181,6 +182,28 @@ void execute_benchmarks(Environment& env, const std::vector<std::string>& algori
                 default:
                     std::cerr << "Unsupported D value for BucketHeap: " << d_ary << std::endl;
             }
+        } else if (algo_name == "anastar_logbucket") {
+            ANAStarPriorityCalculator calculator;
+            std::string desc = "ANA* with LogBucketHeap (D=" + std::to_string(d_ary) + ")";
+            switch (d_ary) {
+                case 2: {
+                    LogBucketHeap<ANAStarPriorityCalculator, std::less<double>, 2> log_bucket_heap(calculator);
+                    print_row(run_benchmark<ANAStar>(env, log_bucket_heap, desc));
+                    break;
+                }
+                case 4: {
+                    LogBucketHeap<ANAStarPriorityCalculator, std::less<double>, 4> log_bucket_heap(calculator);
+                    print_row(run_benchmark<ANAStar>(env, log_bucket_heap, desc));
+                    break;
+                }
+                case 8: {
+                    LogBucketHeap<ANAStarPriorityCalculator, std::less<double>, 8> log_bucket_heap(calculator);
+                    print_row(run_benchmark<ANAStar>(env, log_bucket_heap, desc));
+                    break;
+                }
+                default:
+                    std::cerr << "Unsupported D value for LogBucketHeap: " << d_ary << std::endl;
+            }
         } else if (algo_name == "anastar_realbucket") {
             ANAStarPriorityCalculator calculator;
             std::string desc = "ANA* with RealBucketHeap (a=" + std::to_string(alpha) + ", b=" + std::to_string(beta) + ", D=" + std::to_string(d_ary) + ")";
@@ -242,9 +265,10 @@ int main(int argc, char** argv) {
     cxxopts::Options options("Benchmark", "A command-line benchmarking tool for search algorithms.");
 
     options.add_options()
-        ("p,pancakes", "Number of pancakes", cxxopts::value<int>()->default_value("42"))
+        ("p,pancakes", "Number of pancakes", cxxopts::value<int>()->default_value("48"))
         ("grid-width", "Grid environment width", cxxopts::value<int>()->default_value("1000"))
         ("grid-height", "Grid environment height", cxxopts::value<int>()->default_value("1000"))
+        ("grid-max-edge-cost", "Grid environment max edge cost", cxxopts::value<uint32_t>()->default_value("1"))
         ("k,korf", "Korf100 puzzle range (e.g., 0-9 or 5)", cxxopts::value<std::string>()->default_value("0"))
         
         ("grid-alphas", "CSV for Grid alpha", cxxopts::value<std::string>()->default_value("1"))
@@ -259,8 +283,8 @@ int main(int argc, char** argv) {
         ("korf-betas", "CSV for Korf beta", cxxopts::value<std::string>()->default_value("10"))
         ("korf-ds", "CSV for Korf D", cxxopts::value<std::string>()->default_value("2"))
 
-        ("e,environments", "Comma-separated list of environments (grid, pancake, korf100)", cxxopts::value<std::string>()->default_value("grid,pancake,korf100"))
-        ("l,algorithms", "Comma-separated list of algorithms to run", cxxopts::value<std::string>()->default_value("astar_binary,anytime_astar_binary,anastar_binary,anastar_bucket,anastar_realbucket"))
+        ("e,environments", "Comma-separated list of environments (grid, pancake, korf100, random_grid, heavy_pancake, heavy_korf100)", cxxopts::value<std::string>()->default_value("grid,pancake,korf100"))
+        ("l,algorithms", "Comma-separated list of algorithms to run", cxxopts::value<std::string>()->default_value("astar_binary,anytime_astar_binary,anastar_binary,anastar_bucket,anastar_logbucket,anastar_realbucket"))
         ("h,help", "Print usage");
 
     auto result = options.parse(argc, argv);
@@ -274,7 +298,7 @@ int main(int argc, char** argv) {
     std::vector<std::string> algorithms_to_run;
     std::string algo_str = result["algorithms"].as<std::string>();
     if (algo_str == "all") {
-        algorithms_to_run = {"astar_binary", "anytime_astar_binary", "anastar_binary", "anastar_bucket", "anastar_realbucket"};
+        algorithms_to_run = {"astar_binary", "anytime_astar_binary", "anastar_binary", "anastar_bucket", "anastar_logbucket", "anastar_realbucket"};
     } else {
         algorithms_to_run = parse_list<std::string>(algo_str);
     }
@@ -285,7 +309,7 @@ int main(int argc, char** argv) {
     for(const auto& algo : algorithms_to_run) {
         if (algo == "anastar_realbucket") {
             full_sweep_algos.push_back(algo);
-        } else if (algo == "anastar_bucket") {
+        } else if (algo == "anastar_bucket" || algo == "anastar_logbucket") {
             d_sweep_algos.push_back(algo);
         } else {
             once_off_algos.push_back(algo);
@@ -399,7 +423,112 @@ int main(int argc, char** argv) {
                 }
                 std::cout << std::endl;
             }
-        }
+        } else if (env_name == "heavy_pancake") {
+            std::cout << "\n\033[1m" << "Heavy Pancake Puzzle (" << result["pancakes"].as<int>() << " pancakes)" 
+                      << "\033[0m\n" << std::string(term_width, '=') << "\n";
+            print_header();
+            
+            // Note: Using the new HeavyPancakeEnvironment class
+            HeavyPancakeEnvironment heavy_pancake_env(result["pancakes"].as<int>(), 50000000);
+            heavy_pancake_env.generate_start_node();
+
+            if (!once_off_algos.empty()) {
+                execute_benchmarks(heavy_pancake_env, once_off_algos, 0, 0, 0);
+            }
+
+            if (!d_sweep_algos.empty()) {
+                auto ds = parse_list<int>(result["pancake-ds"].as<std::string>());
+                for (int d : ds) {
+                    execute_benchmarks(heavy_pancake_env, d_sweep_algos, 0, 0, d);
+                }
+            }
+            
+            if (!full_sweep_algos.empty()) {
+                auto alphas = parse_list<uint32_t>(result["pancake-alphas"].as<std::string>());
+                auto betas = parse_list<uint32_t>(result["pancake-betas"].as<std::string>());
+                auto ds = parse_list<int>(result["pancake-ds"].as<std::string>());
+                for (int d : ds) {
+                    for (uint32_t alpha : alphas) {
+                        for (uint32_t beta : betas) {
+                            execute_benchmarks(heavy_pancake_env, full_sweep_algos, alpha, beta, d);
+                        }
+                    }
+                }
+            }
+            std::cout << std::endl;
+
+        } else if (env_name == "heavy_korf100") {
+            std::cout << "\n\033[1m" << "Heavy Sliding Tile Puzzle (Korf100)" << "\033[0m\n" << std::string(term_width, '=') << "\n";
+            
+            auto puzzle_indices = parse_range(result["korf"].as<std::string>());
+            for (int index : puzzle_indices) {
+                std::cout << "\033[1;34m" << "Running puzzle #" << index << "\033[0m" << std::endl;
+                print_header();
+                try {
+                    // Note: Using the new HeavySlidingTileEnvironment class
+                    HeavySlidingTileEnvironment heavy_tile_env(index, "korf100.txt", 20000000);
+
+                    if (!once_off_algos.empty()) {
+                        execute_benchmarks(heavy_tile_env, once_off_algos, 0, 0, 0);
+                    }
+                    
+                    auto ds = parse_list<int>(result["korf-ds"].as<std::string>());
+                    if (!d_sweep_algos.empty()) {
+                        for (int d : ds) {
+                            execute_benchmarks(heavy_tile_env, d_sweep_algos, 0, 0, d);
+                        }
+                    }
+
+                    if (!full_sweep_algos.empty()) {
+                        auto alphas = parse_list<uint32_t>(result["korf-alphas"].as<std::string>());
+                        auto betas = parse_list<uint32_t>(result["korf-betas"].as<std::string>());
+                        for (int d : ds) {
+                            for (uint32_t alpha : alphas) {
+                                for (uint32_t beta : betas) {
+                                    execute_benchmarks(heavy_tile_env, full_sweep_algos, alpha, beta, d);
+                                }
+                            }
+                        }
+                    }
+                } catch (const std::exception& e) {
+                    std::cerr << "Error setting up HeavySlidingTileEnvironment for puzzle #" << index << ": " << e.what() << std::endl;
+                }
+                std::cout << std::endl;
+            }
+        } else if (env_name == "random_grid") {
+             std::cout << "\n\033[1m" << "Random Grid Environment (" 
+                      << result["grid-width"].as<int>() << "x" << result["grid-height"].as<int>()
+                      << ")" << "\033[0m\n" << std::string(term_width, '=') << "\n";
+            print_header();
+            
+            // Instantiate the new RandomGridEnvironment
+            RandomGridEnvironment rand_grid_env(result["grid-width"].as<int>(), result["grid-height"].as<int>(), result["grid-max-edge-cost"].as<uint32_t>(), 42);
+            
+            if (!once_off_algos.empty()) {
+                execute_benchmarks(rand_grid_env, once_off_algos, 0, 0, 0);
+            }
+            
+            if (!d_sweep_algos.empty()) {
+                auto ds = parse_list<int>(result["grid-ds"].as<std::string>());
+                for (int d : ds) {
+                    execute_benchmarks(rand_grid_env, d_sweep_algos, 0, 0, d);
+                }
+            }
+
+            if (!full_sweep_algos.empty()) {
+                auto alphas = parse_list<uint32_t>(result["grid-alphas"].as<std::string>());
+                auto betas = parse_list<uint32_t>(result["grid-betas"].as<std::string>());
+                auto ds = parse_list<int>(result["grid-ds"].as<std::string>());
+                for (int d : ds) {
+                    for (uint32_t alpha : alphas) {
+                        for (uint32_t beta : betas) {
+                            execute_benchmarks(rand_grid_env, full_sweep_algos, alpha, beta, d);
+                        }
+                    }
+                }
+            }
+            std::cout << std::endl;
+        } 
     }
 
     return 0;
