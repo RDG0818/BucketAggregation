@@ -68,6 +68,12 @@ public:
     closed_on_iteration_[id] = search_iteration_;
   }
 
+  inline void unmark_closed(uint32_t id) {
+    if (id < closed_on_iteration_.size()) {
+      closed_on_iteration_[id] = 0;
+    }
+  }
+
   inline uint32_t get_g(uint32_t id) const {
     if (generated_at_[id] != search_iteration_) return INF_COST;
     return g_costs_[id];

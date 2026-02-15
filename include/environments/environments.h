@@ -18,7 +18,7 @@ class GridEnvironment {
 
 public:
 
-  GridEnvironment(uint32_t w, uint32_t h, uint32_t seed = 42);
+  GridEnvironment(uint32_t w, uint32_t h, uint32_t seed = 41);
 
   void reset_search() { pool_.prepare_for_search(); }
 
@@ -49,7 +49,7 @@ class PancakeEnvironment {
 
 public:
 
-  static constexpr size_t N = 48;
+  static constexpr size_t N = 40;
   using T = std::array<uint8_t, N>;
 
   // FNV-1a Hash
@@ -211,7 +211,7 @@ class HeavyPancakeEnvironment {
 
 public:
 
-  static constexpr size_t N = 5;
+  static constexpr size_t N = 10;
   using T = std::array<uint8_t, N>;
 
   // FNV-1a Hash

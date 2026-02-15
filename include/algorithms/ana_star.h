@@ -5,6 +5,7 @@
 #include <vector>
 #include <cstdint>
 #include <limits>
+#include "environments/node.h"
 #include "utils/utils.h"
 #include "queues/bucket_heap.h"
 #include "queues/real_bucket_heap.h"
@@ -58,13 +59,20 @@ void solve() {
 
     uint32_t u = priority_queue_.pop();
 
-    if (stats_) stats_->nodes_expanded++;
+    if (pool.is_closed(u)) {
+      if (stats_) stats_->count_stale_pops++;
+      continue;
+    }
 
     uint32_t u_g = pool.get_g(u);
     uint32_t u_h = env_.get_heuristic(u);
 
-    if (static_cast<double>(u_g) + u_h >= G_upper_) continue; 
-    
+    if (static_cast<double>(u_g) + u_h >= G_upper_) {
+      continue;
+    }
+    pool.mark_closed(u);
+
+    if (stats_) stats_->nodes_expanded++;
 
     if (env_.is_goal(u)) {
       if (u_g < G_upper_) {
@@ -95,8 +103,16 @@ void solve() {
       }
 
       if (new_g < pool.get_g(v)) {
+
+        if (stats_ && pool.get_g(v) != NODE_NULL) {
+          stats_->count_update_pushes++;
+        }
         pool.set_g(v, new_g);
         pool.set_parent(v, u);
+
+        if (pool.is_closed(v)) {
+          pool.unmark_closed(v);
+        }
                     
         if (stats_) stats_->nodes_generated++;
                     

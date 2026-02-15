@@ -26,6 +26,9 @@ struct SearchStats {
   uint64_t count_dequeue = 0;
   uint64_t count_rebuild = 0;
 
+  uint64_t count_stale_pops = 0;
+  uint64_t count_update_pushes = 0;
+
   double total_time_ms = 0;
   uint64_t nodes_expanded = 0;
   uint64_t nodes_generated = 0;

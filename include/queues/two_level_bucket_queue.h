@@ -185,6 +185,7 @@ public:
     f_buckets_.clear();
     f_min_ = INF_COST;
     count_ = 0;
+    pool_.clear();
   }
 
   template <typename T> void rebuild(T) {}
