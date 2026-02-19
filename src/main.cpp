@@ -44,7 +44,7 @@ void write_csv_header(std::ostream& out) {
     out << "environment,instance,algorithm_description,"
         << "solution_cost,nodes_expanded,nodes_generated,total_time_ms,memory_peak_kb,"
         << "count_enqueue,time_enqueue_ns,count_dequeue,time_dequeue_ns,count_rebuild,time_rebuild_ns,"
-        << "count_stale_pops,count_update_pushes,wasted_time_ns\n";
+        << "count_stale_pops,count_update_pushes,wasted_time_ns,total_overhead_ns\n";
 }
 
 // Function to write a result row in CSV format
@@ -52,6 +52,7 @@ void write_csv_row(std::ostream& out, const BenchmarkResult& result) {
     const auto& s = result.stats;
     double avg_deq_ns = (s.count_dequeue > 0) ? (s.time_dequeue / s.count_dequeue) : 0;
     double wasted_time_ns = avg_deq_ns * s.count_stale_pops;
+    double total_overhead_ns = s.time_enqueue + s.time_dequeue + s.time_rebuild;
     out << result.environment_name << ","
         << result.instance_id << ","
         << "\"" << result.description << "\"" << ","
@@ -68,7 +69,8 @@ void write_csv_row(std::ostream& out, const BenchmarkResult& result) {
         << s.time_rebuild << ","
         << s.count_stale_pops << ","
         << s.count_update_pushes << ","
-        << wasted_time_ns << "\n";
+        << wasted_time_ns << ","
+        << total_overhead_ns << "\n";
 }
 
 
