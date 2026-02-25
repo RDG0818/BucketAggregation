@@ -234,18 +234,22 @@ public:
 
   inline uint32_t get_heuristic(uint32_t id) const {
     const T& state = node_states_[id];
-    uint32_t gaps = 0;
+    uint32_t h = 0;
     
     for (size_t i = 0; i < state.size() - 1; i++) {
       int diff = std::abs((int)state[i] - (int)state[i+1]);
       if (diff > 1) {
-        gaps++;
+        h += std::max(state[i], state[i+1]);
       }
     }
-    if (gaps == 0 && !is_goal(id)) {
-        return 1;
+
+    if (h == 0 && !is_goal(id)) {
+        // This means we have a reversed sequence, e.g., [4, 3, 2, 1]
+        // A single flip of the whole stack is needed.
+        return std::max(state[0], state.back());
     }
-    return gaps;
+    
+    return h;
   }
 
   bool is_goal(uint32_t id) const { return id == goal_id_; };

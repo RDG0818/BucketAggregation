@@ -424,7 +424,7 @@ int main(int argc, char** argv) {
                     out << "\033[1;34m" << "Running instance #" << i << "\033[0m" << std::endl;
                     print_header(out);
                 }
-                GridEnvironment grid_env(result["grid-width"].as<int>(), result["grid-height"].as<int>(), 420 + i);
+                GridEnvironment grid_env(result["grid-width"].as<int>(), result["grid-height"].as<int>(), 1 + i);
                 
                 if (!once_off_algos.empty()) {
                     execute_benchmarks(grid_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i);
