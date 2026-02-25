@@ -239,7 +239,7 @@ public:
     for (size_t i = 0; i < state.size() - 1; i++) {
       int diff = std::abs((int)state[i] - (int)state[i+1]);
       if (diff > 1) {
-        h += std::max(state[i], state[i+1]);
+        h += std::min(state[i], state[i+1]);
       }
     }
 
