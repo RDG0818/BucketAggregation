@@ -68,6 +68,10 @@ public:
     return calculator_;
   }
 
+  utils::QueueDetailedMetrics get_detailed_metrics() const {
+    return buckets_.get_detailed_metrics();
+  }
+
 private:
   TwoLevelBucketQueue buckets_;
   IndexedDaryHeap<double, D, Compare> primary_heap_;

@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <type_traits> // For std::void_t
 #include <iomanip>
+#include <map>
 
 #ifdef __linux__
 #include <fstream>
@@ -16,6 +17,38 @@
 #endif
 
 namespace utils {
+
+struct QueueDetailedMetrics {
+  uint64_t expansions = 0;
+  size_t primary_buckets_total = 0;
+  size_t primary_buckets_nonempty = 0;
+  size_t secondary_buckets_total = 0;
+  size_t secondary_buckets_nonempty = 0;
+  uint32_t f_min = 0, f_max = 0;
+  
+  double h_min_mean = 0, h_min_stddev = 0;
+  double h_max_mean = 0, h_max_stddev = 0;
+  double sec_per_pri_mean = 0, sec_per_pri_stddev = 0;
+  double nodes_per_sec_mean = 0, nodes_per_sec_stddev = 0;
+
+  std::map<uint32_t, size_t> h_distribution; // h_value -> node count
+
+  static void write_csv_header(std::ostream& out) {
+    out << "expansions,primary_total,primary_nonempty,secondary_total,secondary_nonempty,"
+        << "f_min,f_max,h_min_mean,h_min_stddev,h_max_mean,h_max_stddev,"
+        << "sec_per_pri_mean,sec_per_pri_stddev,nodes_per_sec_mean,nodes_per_sec_stddev\n";
+  }
+
+  void write_csv_row(std::ostream& out) const {
+    out << expansions << "," << primary_buckets_total << "," << primary_buckets_nonempty << ","
+        << secondary_buckets_total << "," << secondary_buckets_nonempty << ","
+        << f_min << "," << f_max << "," 
+        << h_min_mean << "," << h_min_stddev << ","
+        << h_max_mean << "," << h_max_stddev << ","
+        << sec_per_pri_mean << "," << sec_per_pri_stddev << ","
+        << nodes_per_sec_mean << "," << nodes_per_sec_stddev << "\n";
+  }
+};
 
 struct SearchStats {
   double time_enqueue = 0;
@@ -71,6 +104,12 @@ struct has_rebuild_no_args : std::false_type {};
 
 template<typename Q>
 struct has_rebuild_no_args<Q, std::void_t<decltype(std::declval<Q>().rebuild())>> : std::true_type {};
+
+template<typename Q, typename = std::void_t<>>
+struct has_get_detailed_metrics : std::false_type {};
+
+template<typename Q>
+struct has_get_detailed_metrics<Q, std::void_t<decltype(std::declval<Q>().get_detailed_metrics())>> : std::true_type {};
 
 template <typename QueueType>
 class ProfiledQueue {
@@ -129,6 +168,13 @@ public:
 
   auto& get_calculator() {
     return queue_.get_calculator();
+  }
+
+  utils::QueueDetailedMetrics get_detailed_metrics() {
+    if constexpr (has_get_detailed_metrics<QueueType>::value) {
+      return queue_.get_detailed_metrics();
+    }
+    return utils::QueueDetailedMetrics();
   }
 
   bool empty() const { return queue_.empty(); }

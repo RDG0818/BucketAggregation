@@ -211,7 +211,7 @@ class HeavyPancakeEnvironment {
 
 public:
 
-  static constexpr size_t N = 10;
+  static constexpr size_t N = 11;
   using T = std::array<uint8_t, N>;
 
   // FNV-1a Hash

@@ -14,10 +14,11 @@ class AnytimeAStar {
 
 public:
 
-  AnytimeAStar(E& env, PQ& priority_queue, utils::SearchStats* stats = nullptr, double weight = 2.0) 
+  AnytimeAStar(E& env, PQ& priority_queue, utils::SearchStats* stats = nullptr, bool collect_metrics = false, double weight = 2.0) 
   : env_(env), 
     priority_queue_(priority_queue),
     stats_(stats),
+    collect_metrics_(collect_metrics),
     weight_(weight) {};
 
   void solve() {
@@ -83,6 +84,7 @@ private:
   E& env_;
   PQ& priority_queue_;
   utils::SearchStats* stats_;
+  bool collect_metrics_;
   double weight_;
 
 };

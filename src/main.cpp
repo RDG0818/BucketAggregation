@@ -29,6 +29,7 @@
 #include "queues/real_bucket_heap.h"
 #include "queues/log_bucket_heap.h"
 #include "queues/two_level_bucket_queue.h"
+#include "queues/aggregated_two_level_bucket_queue.h"
 #include "utils/utils.h"
 
 // Struct to hold benchmark results
@@ -140,7 +141,7 @@ struct ANAStarPriorityCalculator {
 
 // Main benchmark runner
 template <template<typename, typename> class Algorithm, typename Environment, typename Queue>
-BenchmarkResult run_benchmark(Environment& env, Queue& queue, const std::string& description, bool show_spinner) {
+BenchmarkResult run_benchmark(Environment& env, Queue& queue, const std::string& description, bool show_spinner, bool collect_metrics) {
     utils::SearchStats stats;
     env.reset_search();
     queue.clear();
@@ -149,7 +150,7 @@ BenchmarkResult run_benchmark(Environment& env, Queue& queue, const std::string&
     ProfiledQueueType profiled_queue(queue, stats);
 
     using Solver = Algorithm<Environment, ProfiledQueueType>;
-    Solver solver(env, profiled_queue, &stats);
+    Solver solver(env, profiled_queue, &stats, collect_metrics);
 
     std::atomic<bool> done(false);
     std::thread loading_thread;
@@ -207,7 +208,8 @@ void execute_benchmarks(
     std::ostream& out,
     bool is_file_output,
     const std::string& env_name,
-    int instance_id) 
+    int instance_id,
+    bool collect_metrics) 
 {
     auto process_result = [&](BenchmarkResult result) {
         result.environment_name = env_name;
@@ -222,30 +224,30 @@ void execute_benchmarks(
     for (const auto& algo_name : algorithms_to_run) {
         if (algo_name == "astar_binary") {
             BinaryHeap<uint32_t> heap;
-            process_result(run_benchmark<AStar>(env, heap, "A* with BinaryHeap", !is_file_output));
+            process_result(run_benchmark<AStar>(env, heap, "A* with BinaryHeap", !is_file_output, collect_metrics));
         } else if (algo_name == "anytime_astar_binary") {
             BinaryHeap<uint32_t> heap;
-            process_result(run_benchmark<AnytimeAStar>(env, heap, "Anytime A* with BinaryHeap", !is_file_output));
+            process_result(run_benchmark<AnytimeAStar>(env, heap, "Anytime A* with BinaryHeap", !is_file_output, collect_metrics));
         } else if (algo_name == "anastar_binary") {
             BinaryHeap<double, std::less<double>> heap;
-            process_result(run_benchmark<ANAStar>(env, heap, "ANA* with BinaryHeap", !is_file_output));
+            process_result(run_benchmark<ANAStar>(env, heap, "ANA* with BinaryHeap", !is_file_output, collect_metrics));
         } else if (algo_name == "anastar_bucket") {
             ANAStarPriorityCalculator calculator;
             std::string desc = "ANA* with BucketHeap (D=" + std::to_string(d_ary) + ")";
             switch (d_ary) {
                 case 2: {
                     BucketHeap<ANAStarPriorityCalculator, std::less<double>, 2> bucket_heap(calculator);
-                    process_result(run_benchmark<ANAStar>(env, bucket_heap, desc, !is_file_output));
+                    process_result(run_benchmark<ANAStar>(env, bucket_heap, desc, !is_file_output, collect_metrics));
                     break;
                 }
                 case 4: {
                     BucketHeap<ANAStarPriorityCalculator, std::less<double>, 4> bucket_heap(calculator);
-                    process_result(run_benchmark<ANAStar>(env, bucket_heap, desc, !is_file_output));
+                    process_result(run_benchmark<ANAStar>(env, bucket_heap, desc, !is_file_output, collect_metrics));
                     break;
                 }
                 case 8: {
                     BucketHeap<ANAStarPriorityCalculator, std::less<double>, 8> bucket_heap(calculator);
-                    process_result(run_benchmark<ANAStar>(env, bucket_heap, desc, !is_file_output));
+                    process_result(run_benchmark<ANAStar>(env, bucket_heap, desc, !is_file_output, collect_metrics));
                     break;
                 }
                 default:
@@ -257,39 +259,43 @@ void execute_benchmarks(
             switch (d_ary) {
                 case 2: {
                     LogBucketHeap<ANAStarPriorityCalculator, std::less<double>, 2> log_bucket_heap(calculator);
-                    process_result(run_benchmark<ANAStar>(env, log_bucket_heap, desc, !is_file_output));
+                    process_result(run_benchmark<ANAStar>(env, log_bucket_heap, desc, !is_file_output, collect_metrics));
                     break;
                 }
                 case 4: {
                     LogBucketHeap<ANAStarPriorityCalculator, std::less<double>, 4> log_bucket_heap(calculator);
-                    process_result(run_benchmark<ANAStar>(env, log_bucket_heap, desc, !is_file_output));
+                    process_result(run_benchmark<ANAStar>(env, log_bucket_heap, desc, !is_file_output, collect_metrics));
                     break;
                 }
                 case 8: {
                     LogBucketHeap<ANAStarPriorityCalculator, std::less<double>, 8> log_bucket_heap(calculator);
-                    process_result(run_benchmark<ANAStar>(env, log_bucket_heap, desc, !is_file_output));
+                    process_result(run_benchmark<ANAStar>(env, log_bucket_heap, desc, !is_file_output, collect_metrics));
                     break;
                 }
                 default:
                     if (!is_file_output) std::cerr << "Unsupported D value for LogBucketHeap: " << d_ary << std::endl;
             }
+                } else if (algo_name == "astar_agg_two_level") {
+            AggregatedTwoLevelBucketQueue queue(alpha, beta);
+            std::string desc = "A* with AggregatedTwoLevelBucketQueue (a=" + std::to_string(alpha) + ", b=" + std::to_string(beta) + ")";
+            process_result(run_benchmark<AStar>(env, queue, desc, !is_file_output, collect_metrics));
         } else if (algo_name == "anastar_realbucket") {
             ANAStarPriorityCalculator calculator;
             std::string desc = "ANA* with RealBucketHeap (a=" + std::to_string(alpha) + ", b=" + std::to_string(beta) + ", D=" + std::to_string(d_ary) + ")";
             switch (d_ary) {
                 case 2: {
                     RealBucketHeap<ANAStarPriorityCalculator, std::less<double>, 2> real_bucket_heap(calculator, alpha, beta);
-                    process_result(run_benchmark<ANAStar>(env, real_bucket_heap, desc, !is_file_output));
+                    process_result(run_benchmark<ANAStar>(env, real_bucket_heap, desc, !is_file_output, collect_metrics));
                     break;
                 }
                 case 4: {
                     RealBucketHeap<ANAStarPriorityCalculator, std::less<double>, 4> real_bucket_heap(calculator, alpha, beta);
-                    process_result(run_benchmark<ANAStar>(env, real_bucket_heap, desc, !is_file_output));
+                    process_result(run_benchmark<ANAStar>(env, real_bucket_heap, desc, !is_file_output, collect_metrics));
                     break;
                 }
                 case 8: {
                     RealBucketHeap<ANAStarPriorityCalculator, std::less<double>, 8> real_bucket_heap(calculator, alpha, beta);
-                    process_result(run_benchmark<ANAStar>(env, real_bucket_heap, desc, !is_file_output));
+                    process_result(run_benchmark<ANAStar>(env, real_bucket_heap, desc, !is_file_output, collect_metrics));
                     break;
                 }
                 default:
@@ -337,6 +343,7 @@ int main(int argc, char** argv) {
         ("grid-max-edge-cost", "Grid environment max edge cost", cxxopts::value<uint32_t>()->default_value("1"))
         ("k,korf", "Korf100 puzzle range (e.g., 0-9 or 5)", cxxopts::value<std::string>()->default_value("0"))
         ("o,output", "Output file for benchmark results (CSV format)", cxxopts::value<std::string>())
+        ("metrics", "Collect and save detailed bucket metrics to bucket_metrics.csv", cxxopts::value<bool>()->default_value("false"))
         ("num-grid", "Number of random grid instances to run", cxxopts::value<int>()->default_value("1"))
         ("num-pancake", "Number of random pancake instances to run", cxxopts::value<int>()->default_value("1"))
         
@@ -353,7 +360,7 @@ int main(int argc, char** argv) {
         ("korf-ds", "CSV for Korf D", cxxopts::value<std::string>()->default_value("2"))
 
         ("e,environments", "Comma-separated list of environments (grid, pancake, korf100, random_grid, heavy_pancake, heavy_korf100)", cxxopts::value<std::string>()->default_value("grid,pancake,korf100"))
-        ("l,algorithms", "Comma-separated list of algorithms to run", cxxopts::value<std::string>()->default_value("astar_binary,anytime_astar_binary,anastar_binary,anastar_bucket,anastar_logbucket,anastar_realbucket"))
+        ("l,algorithms", "Comma-separated list of algorithms to run", cxxopts::value<std::string>()->default_value("astar_binary,anytime_astar_binary,anastar_binary,anastar_bucket,anastar_logbucket,anastar_realbucket,astar_agg_two_level"))
         ("h,help", "Print usage");
 
     auto result = options.parse(argc, argv);
@@ -386,7 +393,7 @@ int main(int argc, char** argv) {
     std::vector<std::string> algorithms_to_run;
     std::string algo_str = result["algorithms"].as<std::string>();
     if (algo_str == "all") {
-        algorithms_to_run = {"astar_binary", "anytime_astar_binary", "anastar_binary", "anastar_bucket", "anastar_logbucket", "anastar_realbucket"};
+        algorithms_to_run = {"astar_binary", "anytime_astar_binary", "anastar_binary", "anastar_bucket", "anastar_logbucket", "anastar_realbucket", "astar_agg_two_level"};
     } else {
         algorithms_to_run = parse_list<std::string>(algo_str);
     }
@@ -395,7 +402,7 @@ int main(int argc, char** argv) {
     std::vector<std::string> d_sweep_algos;
     std::vector<std::string> full_sweep_algos;
     for(const auto& algo : algorithms_to_run) {
-        if (algo == "anastar_realbucket") {
+        if (algo == "anastar_realbucket" || algo == "astar_agg_two_level") {
             full_sweep_algos.push_back(algo);
         } else if (algo == "anastar_bucket" || algo == "anastar_logbucket") {
             d_sweep_algos.push_back(algo);
@@ -427,13 +434,13 @@ int main(int argc, char** argv) {
                 GridEnvironment grid_env(result["grid-width"].as<int>(), result["grid-height"].as<int>(), 1 + i);
                 
                 if (!once_off_algos.empty()) {
-                    execute_benchmarks(grid_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i);
+                    execute_benchmarks(grid_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>());
                 }
                 
                 if (!d_sweep_algos.empty()) {
                     auto ds = parse_list<int>(result["grid-ds"].as<std::string>());
                     for (int d : ds) {
-                        execute_benchmarks(grid_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i);
+                        execute_benchmarks(grid_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>());
                     }
                 }
 
@@ -444,7 +451,7 @@ int main(int argc, char** argv) {
                     for (int d : ds) {
                         for (uint32_t alpha : alphas) {
                             for (uint32_t beta : betas) {
-                                execute_benchmarks(grid_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i);
+                                execute_benchmarks(grid_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>());
                             }
                         }
                     }
@@ -466,13 +473,13 @@ int main(int argc, char** argv) {
                 pancake_env.generate_start_node();
 
                 if (!once_off_algos.empty()) {
-                    execute_benchmarks(pancake_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i);
+                    execute_benchmarks(pancake_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>());
                 }
 
                 if (!d_sweep_algos.empty()) {
                     auto ds = parse_list<int>(result["pancake-ds"].as<std::string>());
                     for (int d : ds) {
-                        execute_benchmarks(pancake_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i);
+                        execute_benchmarks(pancake_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>());
                     }
                 }
                 
@@ -483,7 +490,7 @@ int main(int argc, char** argv) {
                     for (int d : ds) {
                         for (uint32_t alpha : alphas) {
                             for (uint32_t beta : betas) {
-                                execute_benchmarks(pancake_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i);
+                                execute_benchmarks(pancake_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>());
                             }
                         }
                     }
@@ -506,13 +513,13 @@ int main(int argc, char** argv) {
                     SlidingTileEnvironment tile_env(index, "korf100.txt", 20000000);
 
                     if (!once_off_algos.empty()) {
-                        execute_benchmarks(tile_env, once_off_algos, 0, 0, 0, out, file_output, env_name, index);
+                        execute_benchmarks(tile_env, once_off_algos, 0, 0, 0, out, file_output, env_name, index, result["metrics"].as<bool>());
                     }
                     
                     auto ds = parse_list<int>(result["korf-ds"].as<std::string>());
                     if (!d_sweep_algos.empty()) {
                         for (int d : ds) {
-                            execute_benchmarks(tile_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, index);
+                            execute_benchmarks(tile_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, index, result["metrics"].as<bool>());
                         }
                     }
 
@@ -522,7 +529,7 @@ int main(int argc, char** argv) {
                         for (int d : ds) {
                             for (uint32_t alpha : alphas) {
                                 for (uint32_t beta : betas) {
-                                    execute_benchmarks(tile_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, index);
+                                    execute_benchmarks(tile_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, index, result["metrics"].as<bool>());
                                 }
                             }
                         }
@@ -546,13 +553,13 @@ int main(int argc, char** argv) {
                 heavy_pancake_env.generate_start_node();
 
                 if (!once_off_algos.empty()) {
-                    execute_benchmarks(heavy_pancake_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i);
+                    execute_benchmarks(heavy_pancake_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>());
                 }
 
                 if (!d_sweep_algos.empty()) {
                     auto ds = parse_list<int>(result["pancake-ds"].as<std::string>());
                     for (int d : ds) {
-                        execute_benchmarks(heavy_pancake_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i);
+                        execute_benchmarks(heavy_pancake_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>());
                     }
                 }
                 
@@ -563,7 +570,7 @@ int main(int argc, char** argv) {
                     for (int d : ds) {
                         for (uint32_t alpha : alphas) {
                             for (uint32_t beta : betas) {
-                                execute_benchmarks(heavy_pancake_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i);
+                                execute_benchmarks(heavy_pancake_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>());
                             }
                         }
                     }
@@ -587,13 +594,13 @@ int main(int argc, char** argv) {
                     HeavySlidingTileEnvironment heavy_tile_env(index, "korf100.txt", 20000000);
 
                     if (!once_off_algos.empty()) {
-                        execute_benchmarks(heavy_tile_env, once_off_algos, 0, 0, 0, out, file_output, env_name, index);
+                        execute_benchmarks(heavy_tile_env, once_off_algos, 0, 0, 0, out, file_output, env_name, index, result["metrics"].as<bool>());
                     }
                     
                     auto ds = parse_list<int>(result["korf-ds"].as<std::string>());
                     if (!d_sweep_algos.empty()) {
                         for (int d : ds) {
-                            execute_benchmarks(heavy_tile_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, index);
+                            execute_benchmarks(heavy_tile_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, index, result["metrics"].as<bool>());
                         }
                     }
 
@@ -603,7 +610,7 @@ int main(int argc, char** argv) {
                         for (int d : ds) {
                             for (uint32_t alpha : alphas) {
                                 for (uint32_t beta : betas) {
-                                    execute_benchmarks(heavy_tile_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, index);
+                                    execute_benchmarks(heavy_tile_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, index, result["metrics"].as<bool>());
                                 }
                             }
                         }
@@ -628,13 +635,13 @@ int main(int argc, char** argv) {
                 RandomGridEnvironment rand_grid_env(result["grid-width"].as<int>(), result["grid-height"].as<int>(), result["grid-max-edge-cost"].as<uint32_t>(), 42 + i);
                 
                 if (!once_off_algos.empty()) {
-                    execute_benchmarks(rand_grid_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i);
+                    execute_benchmarks(rand_grid_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>());
                 }
                 
                 if (!d_sweep_algos.empty()) {
                     auto ds = parse_list<int>(result["grid-ds"].as<std::string>());
                     for (int d : ds) {
-                        execute_benchmarks(rand_grid_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i);
+                        execute_benchmarks(rand_grid_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>());
                     }
                 }
 
@@ -645,7 +652,7 @@ int main(int argc, char** argv) {
                     for (int d : ds) {
                         for (uint32_t alpha : alphas) {
                             for (uint32_t beta : betas) {
-                                execute_benchmarks(rand_grid_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i);
+                                execute_benchmarks(rand_grid_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>());
                             }
                         }
                     }

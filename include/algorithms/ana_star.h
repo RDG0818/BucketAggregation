@@ -5,6 +5,9 @@
 #include <vector>
 #include <cstdint>
 #include <limits>
+#include <iostream>
+#include <iomanip>
+#include <fstream>
 #include "environments/node.h"
 #include "utils/utils.h"
 #include "queues/bucket_heap.h"
@@ -30,14 +33,30 @@ template <typename E, typename PQ>
 class ANAStar {
 
 public:
-  ANAStar(E& env, PQ& priority_queue, utils::SearchStats* stats = nullptr) 
-    : env_(env), priority_queue_(priority_queue), stats_(stats), G_upper_(std::numeric_limits<double>::max()) {
+  ANAStar(E& env, PQ& priority_queue, utils::SearchStats* stats = nullptr, bool collect_metrics = false) 
+    : env_(env), priority_queue_(priority_queue), stats_(stats), collect_metrics_(collect_metrics), G_upper_(std::numeric_limits<double>::max()) {
       if constexpr (is_bucket_heap<PQ>::value) {
         priority_queue_.get_calculator().set_g_upper(G_upper_);
       }
+      if (collect_metrics_) {
+        metrics_out_.open("bucket_metrics.csv", std::ios::trunc);
+        if (metrics_out_.is_open()) {
+            utils::QueueDetailedMetrics::write_csv_header(metrics_out_);
+        }
+      }
     };
 
-        
+  ~ANAStar() {
+      if (metrics_out_.is_open()) metrics_out_.close();
+  }
+
+  void print_detailed_metrics(const utils::QueueDetailedMetrics& m) {
+      if (metrics_out_.is_open()) {
+          m.write_csv_row(metrics_out_);
+          metrics_out_.flush();
+      }
+  }
+
 void solve() {
   env_.reset_search();
   auto& pool = env_.get_pool();
@@ -55,8 +74,18 @@ void solve() {
   std::vector<uint32_t> neighbors;
   neighbors.reserve(16);
 
+  uint64_t expansions_count = 0;
+  const uint64_t metric_interval = 1000000;
+
   while (!priority_queue_.empty()) {
 
+    if (collect_metrics_ && expansions_count % metric_interval == 0 && expansions_count > 0) {
+      if constexpr (utils::has_get_detailed_metrics<PQ>::value) {
+        auto m = priority_queue_.get_detailed_metrics();
+        m.expansions = expansions_count;
+        print_detailed_metrics(m);
+      }
+    }
     uint32_t u = priority_queue_.pop();
 
     if (pool.is_closed(u)) {
@@ -72,6 +101,7 @@ void solve() {
     }
     pool.mark_closed(u);
 
+    expansions_count++;
     if (stats_) stats_->nodes_expanded++;
 
     if (env_.is_goal(u)) {
@@ -142,6 +172,8 @@ private:
   E& env_;
   PQ& priority_queue_;
   utils::SearchStats* stats_;
+  bool collect_metrics_;
   double G_upper_;
+  std::ofstream metrics_out_;
 
 };

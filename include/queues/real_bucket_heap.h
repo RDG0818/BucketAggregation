@@ -77,6 +77,23 @@ public:
     return calculator_;
   }
 
+  utils::QueueDetailedMetrics get_detailed_metrics() const {
+    auto m = buckets_.get_detailed_metrics();
+    m.h_min_mean *= alpha_;
+    m.h_min_stddev *= alpha_;
+    m.h_max_mean *= alpha_;
+    m.h_max_stddev *= alpha_;
+    
+    // Also scale the distribution map
+    std::map<uint32_t, size_t> scaled_dist;
+    for (auto const& [h_idx, count] : m.h_distribution) {
+      scaled_dist[h_idx * alpha_] = count;
+    }
+    m.h_distribution = std::move(scaled_dist);
+    
+    return m;
+  }
+
 private:
   TwoLevelBucketQueue buckets_;
   IndexedDaryHeap<double, D, Compare> primary_heap_;
