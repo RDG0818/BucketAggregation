@@ -310,6 +310,30 @@ src/main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/src/main.cpp.s
 .PHONY : src/main.cpp.s
 
+src/msa_environment.o: src/msa_environment.cpp.o
+.PHONY : src/msa_environment.o
+
+# target to build an object file
+src/msa_environment.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/msa_environment.cpp.o
+.PHONY : src/msa_environment.cpp.o
+
+src/msa_environment.i: src/msa_environment.cpp.i
+.PHONY : src/msa_environment.i
+
+# target to preprocess a source file
+src/msa_environment.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/msa_environment.cpp.i
+.PHONY : src/msa_environment.cpp.i
+
+src/msa_environment.s: src/msa_environment.cpp.s
+.PHONY : src/msa_environment.s
+
+# target to generate assembly for a file
+src/msa_environment.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/msa_environment.cpp.s
+.PHONY : src/msa_environment.cpp.s
+
 src/pancake_environment.o: src/pancake_environment.cpp.o
 .PHONY : src/pancake_environment.o
 
@@ -624,6 +648,9 @@ help:
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
+	@echo "... src/msa_environment.o"
+	@echo "... src/msa_environment.i"
+	@echo "... src/msa_environment.s"
 	@echo "... src/pancake_environment.o"
 	@echo "... src/pancake_environment.i"
 	@echo "... src/pancake_environment.s"

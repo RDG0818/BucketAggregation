@@ -1,7 +1,0 @@
-environment,instance,algorithm_description,solution_cost,nodes_expanded,nodes_generated,total_time_ms,memory_peak_kb,count_enqueue,time_enqueue_ns,count_dequeue,time_dequeue_ns,count_rebuild,time_rebuild_ns
-grid,0,"ANA* with BinaryHeap",2000,826907,826906,281.857,19072,826907,6.29264e+07,826907,8.93383e+07,67,1.30655e+07
-grid,0,"ANA* with BucketHeap (D=2)",2000,531253,531252,157.077,29796,531253,3.90369e+07,531253,4.32044e+07,59,109871
-grid,1,"ANA* with BinaryHeap",1998,860994,860993,292.968,29796,860994,5.87161e+07,860994,9.74046e+07,55,1.23129e+07
-grid,1,"ANA* with BucketHeap (D=2)",1998,795847,795846,239.428,32056,795847,5.58924e+07,795847,6.70751e+07,65,144741
-grid,2,"ANA* with BinaryHeap",-1,2,1,0.005432,32056,2,654,2,83,0,0
-grid,2,"ANA* with BucketHeap (D=2)",-1,2,1,0.042733,32056,2,40284,2,656,0,0

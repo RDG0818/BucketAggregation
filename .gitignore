@@ -1,8 +1,5 @@
 build/
 
 csv/
-csv_2/
-csv_3/
 aggregated_csvs/
 metrics/
-scripts/

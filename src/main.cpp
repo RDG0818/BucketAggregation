@@ -359,7 +359,12 @@ int main(int argc, char** argv) {
         ("korf-betas", "CSV for Korf beta", cxxopts::value<std::string>()->default_value("10"))
         ("korf-ds", "CSV for Korf D", cxxopts::value<std::string>()->default_value("2"))
 
-        ("e,environments", "Comma-separated list of environments (grid, pancake, korf100, random_grid, heavy_pancake, heavy_korf100)", cxxopts::value<std::string>()->default_value("grid,pancake,korf100"))
+        ("msa-alphas", "CSV for MSA alpha", cxxopts::value<std::string>()->default_value("1"))
+        ("msa-betas", "CSV for MSA beta", cxxopts::value<std::string>()->default_value("1"))
+        ("msa-ds", "CSV for MSA D", cxxopts::value<std::string>()->default_value("2"))
+        ("num-msa", "Number of random MSA instances to run", cxxopts::value<int>()->default_value("6"))
+
+        ("e,environments", "Comma-separated list of environments (grid, pancake, korf100, random_grid, heavy_pancake, heavy_korf100, msa)", cxxopts::value<std::string>()->default_value("grid,pancake,korf100"))
         ("l,algorithms", "Comma-separated list of algorithms to run", cxxopts::value<std::string>()->default_value("astar_binary,anytime_astar_binary,anastar_binary,anastar_bucket,anastar_logbucket,anastar_realbucket,astar_agg_two_level"))
         ("h,help", "Print usage");
 
@@ -659,9 +664,67 @@ int main(int argc, char** argv) {
                 }
                 if (!file_output) out << std::endl;
             }
-        } 
-    }
+        } else if (env_name == "msa") {
+            if (!file_output) {
+                out << "\n\033[1m" << "Multiple Sequence Alignment (5 of 6 EF-TU/EF-1a Proteins)" 
+                        << "\033[0m\n" << std::string(term_width, '=') << "\n";
+            }
 
+            // Sequences from Ikeda & Imai (1994), Fig. 2.
+            const std::vector<std::string> all_sequences = {
+                "MSDEQHQNLAIIGHVDHGKSTLVGRLLYETGSVPEHVIEQHKEEAEEKGKGGFEFAYVMDNLAEERERGVTIDIAHQEFSTDTYDFTIVDCPGHRDFVKNMITGASQADNAVLVVAADGVQPQTQEHVFLARTLGIGELIVAVNKMDLVDYGESEYKQVVEEVKDLLTQVRFDSENAKFIPVSAFEGDNIAEESEHTGWYDGEILLEALNELPAPEPPTDAPLRLPIQDVYTISGIGTVPVGRVETGILNTGDNVSFQPDSVSGEVKTVEMHHEEVPKAEPGDNVGFNVRGVGKDDIRRGDVCGPADDPPSVAETFQAQIVVMQHPSVITEGYTPVFHAHTAQVACTVESIDKKIDPSSGEVAEENPDFIQNGDAAVVTVRPQKPLSIEPSSEIPELGSFAIRDMGQTIAAGKVLGVNER", // Hal
+                "MAKTKPILNVAFIGHVDAGKSTTVGRLLLDGGAIDPQLIVRLRKEAEEKGKAGFEFAYVMDGLKEERERGVTIDVAHKKFPPAKYEVTIVDCPGHRDFIKNMITGASQADAAVLVVNVDDAKSGIQPQTREHVFLIRTLGVRQLAVAVNKMDTVNFSEADYNELKKMIGDQLLKMIGFNPEQINFVPVASLHGDNVFKKSERNPWYKGPTIAEVIDGFQPPEKPTNLPLRLPIQDVYTITGVGTVPVGRVETGIIKPGDKVVFEGAGEIKTVEMHHEQLPSAEPGDNIGFNVRGVGKKDIKRGDVLGHTTNPPTVATDFTAQIVVLQHPSVLTDGYTPVFHTHTAQIACTFAEIQKKLNPATGEVLEENPDFLKAGDAAIVKLIPTKPMVIESVKEIPQLGRFAIRDMGMTVAAGMAIQVTAKNK", // Met
+                "MASQKPHLNLITIGHVDHGKSTLVGRLLYEHGEIPAHIIEEYRKEAEQKGKATFEFAWVMDRFKEERERGVTIDLAHRKFETDKYYFTLIDAPGHRDFVKNMITGTSQADAAILVISARDGEGVMEQTREHAFLARTLGVPQMVVAINKMDATSPPYSEKRYNEVKADAEKLLRSIGFKDISFVPISGYKGDNVTKPSPNMPWYKGPTLLQALDAFKVPEKPINKPLRIPVEDVYSITGIGTVPVGRVETGVLKPGDKVIFLPADKQGDVKSIEMHHEPLQQAEPGDNIGFNVRGIAKNDIKRGDVCGHLDTPPTVVKAFTAQIIVLNHPSVIAPGYKPVFHVHTAQVACRIDEIVKTLNPKDGTTLEKPDFIKNGDVAIVKVIPDKPLVIEKVSEIPQLGRFAVLDMGQTVAAGQCIDLEKR", // Tha
+                "MAKEKPHINIVFIGHVDHGKSTTIGRLLFDTANIPENIIKKFEEMGEKGKSFKFAWVMDRLKEERERGITIDVAHTKFETPHRYITIIDAPGHRDFVKNMITGASQADAAVLVVAVTDGVMPQTKEHAFLARTLGINNILVAVNKMDMVNYDEKKFKAVAEQVKKLLMMLGYKNFPIIPISAWEGDNVVKKSDKMPWYNGPTLIEALDQMPEPPKPTDKPLRIPIQDVYSIKGVGTVPVGRVETGVLRVGDVVIFEPASTIFHKPIQGEVKSIEMHHEPMQEALPGDNIGFNVRGVGKNDIKRGDVAGHTNNPPTVVRPKDTFKAQIIVLNHPTAITVGYTPVLHAHTLQVAVRFEQLLAKLDPRTGNIVEENPQFIKTGDSAIVVLRPTKPMVIEPVKEIPQMGRFAIRDMGQTVAAGMVISIQKAE", // The
+                "MSQKPHLNLIVIGHVDHGKSTLIGRLLMDRGFIDEKTVKEAEEAAKKLGKDSEKYAFLMDRLKEERERGVTINLSFMRFETRKYFFTVIDAPGHRDFVKNMITGASQADAAILVVSAKKGEYEAGMSAEGQTREHIILSKTMGINQVIVAINKMDLADTPYDEKRFKEIVDTVSKFMKSFGFDMNKVKFVPVVAPDGDNVTHKSTKMPWYNGPTLEELLDQLEIPPKPVDKPLRIPIQEVYSISGVGVVPVGRIESGVLKVGDKIVFMPVGKIGEVRSIETHHTKIDKAEPGDNIGFNVRGVEKKDVKRGDVAGSVQNPPTVADEFTAQVIVIWHPTAVGVGYTPVLHVHTASIACRVSEITSRIDPKTGKEAEKNPQFIKAGDSAIVKFKPIKELVAEKFREFPALGRFAMRDMGKTVGVGVIIDVKPRKVEVK", // Sul
+                "MPKEKTHINIVVIGHVDSGKSTTTGHLIYKCGGIDQRTIEKFEKESAEMGKGSFKYAWVLDNLKAERERGITIDISLWKFETSKYYFTIIDAPGHRDFIKNMITGTSQADVAILIVAAGTGEFEAGISKNGQTREHILLSYTLGVKQMIVGVNKMDAIQYKQERYEEIKKEISAFLKKTGYNPDKIPFVPISGFQGDNMIEPSTNMPWYKGPTLIGALDSVTPPERPVDKPLRLPLQDVYKISGIGTVPVGRVETGILKPGTIVQFAPSGVSSECKSIEMHHTALAQAIPGDNVGFNVRNLTVKDIKRGNVASDAKNQPAVGCEDFTAQVIVMNHPGQIRKGYTPVLDCHTSHIACKFEELLSKIDRRTGKSMEGGEPEYIKNGDSALVKIVPTKPLCVEEFAKFPPLGRFAVRDMKQTVAVGVVKAVTP" // Ent
+            };
+
+            int num_msa_runs = result["num-msa"].as<int>();
+
+            for (int i = 0; i < num_msa_runs; ++i) {
+                if (i >= 6) break; // We only have 6 sequences to choose from
+                if (!file_output) {
+                    out << "\033[1;34m" << "Running instance #" << i << " (excluding sequence " << i << ")\033[0m" << std::endl;
+                    print_header(out);
+                }
+
+                std::vector<std::string> current_sequences;
+                for(int j=0; j<6; ++j) { // Iterate through the 6 selected sequences
+                    if (i != j) {
+                        current_sequences.push_back(all_sequences[j]);
+                    }
+                }
+
+                MSAEnvironment msa_env(current_sequences, 50000000);
+
+                if (!once_off_algos.empty()) {
+                    execute_benchmarks(msa_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>());
+                }
+
+                if (!d_sweep_algos.empty()) {
+                    auto ds = parse_list<int>(result["msa-ds"].as<std::string>());
+                    for (int d : ds) {
+                        execute_benchmarks(msa_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>());
+                    }
+                }
+
+                if (!full_sweep_algos.empty()) {
+                    auto alphas = parse_list<uint32_t>(result["msa-alphas"].as<std::string>());
+                    auto betas = parse_list<uint32_t>(result["msa-betas"].as<std::string>());
+                    auto ds = parse_list<int>(result["msa-ds"].as<std::string>());
+                    for (int d : ds) {
+                        for (uint32_t alpha : alphas) {
+                            for (uint32_t beta : betas) {
+                                execute_benchmarks(msa_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>());
+                            }
+                        }
+                    }
+                }
+                if (!file_output) out << std::endl;
+            }
+        } 
+        }
     if (file_output) {
         outfile.close();
         std::cout << "Benchmark results written to " << result["output"].as<std::string>() << std::endl;
