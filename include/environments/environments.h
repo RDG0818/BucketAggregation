@@ -365,65 +365,6 @@ private:
 };
 
 class MSAEnvironment {
-private:
-    // Private inner class for PAM250 scoring
-    struct PAM250 {
-        std::map<std::pair<char, char>, int> matrix;
-
-        void add(char a, char b, int score) {
-            if (a > b) std::swap(a, b);
-            matrix[{a, b}] = score;
-        }
-
-        PAM250() {
-            add('A', 'A',  2); add('A', 'R', -2); add('R', 'R',  6); add('A', 'N',  0); add('R', 'N',  0); add('N', 'N',  2);
-            add('A', 'D',  0); add('R', 'D', -1); add('N', 'D',  2); add('D', 'D',  4); add('A', 'C', -2); add('R', 'C', -4);
-            add('N', 'C', -4); add('D', 'C', -5); add('C', 'C', 12); add('A', 'Q',  0); add('R', 'Q',  1); add('N', 'Q',  1);
-            add('D', 'Q',  2); add('C', 'Q', -5); add('Q', 'Q',  4); add('A', 'E',  0); add('R', 'E', -1); add('N', 'E',  1);
-            add('D', 'E',  3); add('C', 'E', -5); add('Q', 'E',  2); add('E', 'E',  4); add('A', 'G',  1); add('R', 'G', -3);
-            add('N', 'G',  0); add('D', 'G',  1); add('C', 'G', -3); add('Q', 'G', -1); add('E', 'G',  0); add('G', 'G',  5);
-            add('A', 'H', -1); add('R', 'H',  2); add('N', 'H',  2); add('D', 'H',  1); add('C', 'H', -3); add('Q', 'H',  3);
-            add('E', 'H',  1); add('G', 'H', -2); add('H', 'H',  6); add('A', 'I', -1); add('R', 'I', -2); add('N', 'I', -2);
-            add('D', 'I', -2); add('C', 'I', -2); add('Q', 'I', -2); add('E', 'I', -2); add('G', 'I', -3); add('H', 'I', -2);
-            add('I', 'I',  5); add('A', 'L', -2); add('R', 'L', -3); add('N', 'L', -3); add('D', 'L', -4); add('C', 'L', -6);
-            add('Q', 'L', -2); add('E', 'L', -3); add('G', 'L', -4); add('H', 'L', -2); add('I', 'L',  2); add('L', 'L',  6);
-            add('A', 'K', -1); add('R', 'K',  3); add('N', 'K',  1); add('D', 'K',  0); add('C', 'K', -5); add('Q', 'K',  1);
-            add('E', 'K',  0); add('G', 'K', -2); add('H', 'K',  0); add('I', 'K', -2); add('L', 'K', -3); add('K', 'K',  5);
-            add('A', 'M', -1); add('R', 'M',  0); add('N', 'M', -2); add('D', 'M', -3); add('C', 'M', -5); add('Q', 'M', -1);
-            add('E', 'M', -2); add('G', 'M', -3); add('H', 'M', -2); add('I', 'M',  2); add('L', 'M',  4); add('K', 'M',  0);
-            add('M', 'M',  6); add('A', 'F', -4); add('R', 'F', -4); add('N', 'F', -4); add('D', 'F', -6); add('C', 'F', -4);
-            add('Q', 'F', -5); add('E', 'F', -5); add('G', 'F', -5); add('H', 'F', -2); add('I', 'F',  1); add('L', 'F',  2);
-            add('K', 'F', -5); add('M', 'F',  0); add('F', 'F',  9); add('A', 'P',  1); add('R', 'P',  0); add('N', 'P', -1);
-            add('D', 'P', -1); add('C', 'P', -3); add('Q', 'P',  0); add('E', 'P', -1); add('G', 'P', -1); add('H', 'P',  0);
-            add('I', 'P', -2); add('L', 'P', -3); add('K', 'P', -1); add('M', 'P', -2); add('F', 'P', -5); add('P', 'P',  6);
-            add('A', 'S',  1); add('R', 'S',  0); add('N', 'S',  1); add('D', 'S',  0); add('C', 'S',  0); add('Q', 'S', -1);
-            add('E', 'S',  0); add('G', 'S',  1); add('H', 'S', -1); add('I', 'S', -1); add('L', 'S', -3); add('K', 'S',  0);
-            add('M', 'S', -2); add('F', 'S', -3); add('P', 'S',  1); add('S', 'S',  3); add('A', 'T',  1); add('R', 'T', -1);
-            add('N', 'T',  0); add('D', 'T',  0); add('C', 'T', -2); add('Q', 'T', -1); add('E', 'T',  0); add('G', 'T',  0);
-            add('H', 'T', -1); add('I', 'T',  0); add('L', 'T', -2); add('K', 'T',  0); add('M', 'T', -1); add('F', 'T', -2);
-            add('P', 'T',  0); add('S', 'T',  1); add('T', 'T',  3); add('A', 'W', -6); add('R', 'W',  2); add('N', 'W', -4);
-            add('D', 'W', -7); add('C', 'W', -8); add('Q', 'W', -5); add('E', 'W', -7); add('G', 'W', -7); add('H', 'W', -3);
-            add('I', 'W', -5); add('L', 'W', -2); add('K', 'W', -3); add('M', 'W', -4); add('F', 'W',  0); add('P', 'W', -6);
-            add('S', 'W', -2); add('T', 'W', -5); add('W', 'W', 17); add('A', 'Y', -3); add('R', 'Y', -4); add('N', 'Y', -2);
-            add('D', 'Y', -4); add('C', 'Y',  0); add('Q', 'Y', -4); add('E', 'Y', -4); add('G', 'Y', -5); add('H', 'Y',  0);
-            add('I', 'Y', -1); add('L', 'Y', -1); add('K', 'Y', -4); add('M', 'Y', -2); add('F', 'Y',  7); add('P', 'Y', -5);
-            add('S', 'Y', -3); add('T', 'Y', -3); add('W', 'Y',  0); add('Y', 'Y', 10); add('A', 'V',  0); add('R', 'V', -2);
-            add('N', 'V', -2); add('D', 'V', -2); add('C', 'V', -2); add('Q', 'V', -2); add('E', 'V', -2); add('G', 'V', -1);
-            add('H', 'V', -2); add('I', 'V',  4); add('L', 'V',  2); add('K', 'V', -2); add('M', 'V',  2); add('F', 'V', -1);
-            add('P', 'V', -1); add('S', 'V', -1); add('T', 'V',  0); add('W', 'V', -6); add('Y', 'V', -2); add('V', 'V',  4);
-        }
-
-        // The papers use reversed scores for their cost-minimization search.
-        // score(a,b) = -PAM(a,b)
-        int getCost(char a, char b) const {
-            if (a > b) std::swap(a, b);
-            auto it = matrix.find({a, b});
-            if (it != matrix.end()) {
-                return -it->second;
-            }
-            return 4; // Default penalty for unknown characters
-        }
-    };
 
 public:
   static constexpr size_t N = 5;
@@ -479,6 +420,6 @@ private:
   T goal_state_;
   uint32_t goal_id_;
 
-  PAM250 pam250_scorer_;
-  static constexpr uint32_t GAP_COST = 8;
+  static constexpr uint32_t GAP_COST = 1;
+  static constexpr uint32_t MISMATCH_COST = 2;
 };

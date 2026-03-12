@@ -4,9 +4,10 @@
 
 // Define the static constexpr member
 constexpr uint32_t MSAEnvironment::GAP_COST;
+constexpr uint32_t MSAEnvironment::MISMATCH_COST;
 
 MSAEnvironment::MSAEnvironment(const std::vector<std::string>& sequences, uint32_t capacity)
-  : sequences_(sequences), capacity_(capacity), pam250_scorer_() {
+  : sequences_(sequences), capacity_(capacity) {
   
   seq_lengths_.resize(N);
   for (size_t i = 0; i < N; ++i) {
@@ -65,8 +66,7 @@ void MSAEnvironment::get_successors(uint32_t u_id, std::vector<uint32_t>& neighb
 }
 
 uint32_t MSAEnvironment::get_pairwise_cost(char a, char b) const {
-    // Casting to a non-const version to call a non-const method
-    return pam250_scorer_.getCost(a, b);
+    return (a == b) ? 0 : MISMATCH_COST;
 }
 
 uint32_t MSAEnvironment::compute_transition_cost(const T& u_state, const T& v_state) const {
@@ -135,10 +135,10 @@ void MSAEnvironment::compute_pairwise_heuristics() {
 
       auto get_idx = [&](size_t x, size_t y) { return x * (len_j + 1) + y; };
 
-      for (int x = len_i - 1; x >= 0; --x) {
+      for (int x = (int)len_i - 1; x >= 0; --x) {
           table[get_idx(x, len_j)] = table[get_idx(x + 1, len_j)] + GAP_COST;
       }
-      for (int y = len_j - 1; y >= 0; --y) {
+      for (int y = (int)len_j - 1; y >= 0; --y) {
           table[get_idx(len_i, y)] = table[get_idx(len_i, y+1)] + GAP_COST;
       }
 
