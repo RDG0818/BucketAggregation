@@ -16,7 +16,7 @@ public:
   BinaryHeap() = default;
 
   void push(uint32_t id, PriorityType priority, uint32_t h = 0) {
-    heap_.push_back({priority, id});
+    heap_.push_back({priority, id, h});
     std::push_heap(heap_.begin(), heap_.end(), HeapItemCompare());
   }
 
@@ -54,11 +54,15 @@ private:
   struct HeapItem {
     PriorityType priority;
     uint32_t id;
+    uint32_t h;
   };
 
   struct HeapItemCompare {
     bool operator()(const HeapItem& a, const HeapItem& b) const {
-      return Compare()(a.priority, b.priority);
+      if (a.priority != b.priority) {
+        return Compare()(a.priority, b.priority);
+      }
+      return a.h > b.h; // Tie-break on h-value, preferring smaller h.
     }
   };
 
