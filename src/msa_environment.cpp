@@ -43,7 +43,7 @@ uint32_t MSAEnvironment::get_or_create_id(const T& state) {
 
 void MSAEnvironment::get_successors(uint32_t u_id, std::vector<uint32_t>& neighbors) {
   neighbors.clear();
-  const T& current_state = node_states_[u_id];
+  const T current_state = node_states_[u_id];
 
   uint32_t num_moves = (1 << N) - 1;
   for (uint32_t m = 1; m <= num_moves; ++m) {
