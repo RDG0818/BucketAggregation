@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include "environments/environments.h"
 #include "utils/utils.h"
 
 template <typename E, typename PQ> 
@@ -61,6 +62,7 @@ public:
 
       uint32_t u = priority_queue_.pop();
       if (pool.is_closed(u)) {
+        if (stats_) stats_->count_stale_pops++;
         continue;
       }
       pool.mark_closed(u);
@@ -82,6 +84,9 @@ public:
         uint32_t new_g = u_g + cost;
 
         if (new_g < pool.get_g(v)) {
+          if (stats_ && pool.get_g(v) != NODE_NULL) {
+            stats_->count_update_pushes++;
+          }
           pool.set_g(v, new_g);
           pool.set_parent(v, u);
           uint32_t h = env_.get_heuristic(v);

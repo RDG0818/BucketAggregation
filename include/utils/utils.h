@@ -54,10 +54,12 @@ struct SearchStats {
   double time_enqueue = 0;
   double time_dequeue = 0;
   double time_rebuild = 0; // For ANA* heap rebuilding
+  double time_decrease_key = 0;
   
   uint64_t count_enqueue = 0;
   uint64_t count_dequeue = 0;
   uint64_t count_rebuild = 0;
+  uint64_t count_decrease_key = 0;
 
   uint64_t count_stale_pops = 0;
   uint64_t count_update_pushes = 0;
@@ -92,7 +94,7 @@ inline long get_peak_memory_kb() {
   return 0; 
 }
 
-// SFINAE helper to check if Q has rebuild method
+// SFINAE helpers
 template<typename Q, typename F, typename = std::void_t<>>
 struct has_rebuild : std::false_type {};
 
@@ -111,6 +113,12 @@ struct has_get_detailed_metrics : std::false_type {};
 template<typename Q>
 struct has_get_detailed_metrics<Q, std::void_t<decltype(std::declval<Q>().get_detailed_metrics())>> : std::true_type {};
 
+template<typename Q, typename = std::void_t<>>
+struct has_contains : std::false_type {};
+
+template<typename Q>
+struct has_contains<Q, std::void_t<decltype(std::declval<Q>().contains(uint32_t{}))>> : std::true_type {};
+
 template <typename QueueType>
 class ProfiledQueue {
 public:
@@ -120,13 +128,23 @@ public:
   // Matches generic push(id, f, h) interface
   template<typename PriorityType>
   void push(uint32_t handle, PriorityType priority, uint32_t h = 0) {
+    bool is_update = false;
+    if constexpr (has_contains<QueueType>::value) {
+      is_update = queue_.contains(handle);
+    }
+
     auto start = std::chrono::steady_clock::now();
-    
     queue_.push(handle, priority, h);
-    
     auto end = std::chrono::steady_clock::now();
-    stats_.time_enqueue += std::chrono::duration<double, std::nano>(end - start).count();
-    stats_.count_enqueue++;
+    
+    double duration = std::chrono::duration<double, std::nano>(end - start).count();
+    if (is_update) {
+      stats_.time_decrease_key += duration;
+      stats_.count_decrease_key++;
+    } else {
+      stats_.time_enqueue += duration;
+      stats_.count_enqueue++;
+    }
   }
 
   uint32_t pop() {

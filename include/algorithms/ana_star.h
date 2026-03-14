@@ -75,7 +75,7 @@ void solve() {
   neighbors.reserve(16);
 
   uint64_t expansions_count = 0;
-  const uint64_t metric_interval = 1000000;
+  const uint64_t metric_interval = 100000;
 
   while (!priority_queue_.empty()) {
 

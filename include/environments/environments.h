@@ -115,6 +115,7 @@ private:
   T start_state_;
   T goal_state_;
   uint32_t goal_id_;
+  uint32_t seed_;
 
 };
 
@@ -213,7 +214,7 @@ class HeavyPancakeEnvironment {
 
 public:
 
-  static constexpr size_t N = 11;
+  static constexpr size_t N = 10;
   using T = std::array<uint8_t, N>;
 
   // FNV-1a Hash
@@ -292,6 +293,7 @@ private:
   T start_state_;
   T goal_state_;
   uint32_t goal_id_;
+  uint32_t seed_;
 
 };
 

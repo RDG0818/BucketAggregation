@@ -6,7 +6,7 @@
 #include <numeric>
 #include <random>
 
-PancakeEnvironment::PancakeEnvironment(uint32_t seed, uint32_t capacity) : capacity_(capacity) {
+PancakeEnvironment::PancakeEnvironment(uint32_t seed, uint32_t capacity) : capacity_(capacity), seed_(seed) {
 
   std::iota(goal_state_.begin(), goal_state_.end(), 0);
 
@@ -20,7 +20,7 @@ PancakeEnvironment::PancakeEnvironment(uint32_t seed, uint32_t capacity) : capac
 uint32_t PancakeEnvironment::generate_start_node() {
   start_state_ = goal_state_;
 
-  std::mt19937 g(42);
+  std::mt19937 g(seed_);
   std::shuffle(start_state_.begin(), start_state_.end(), g);
 
   return get_or_create_id(start_state_);
@@ -60,7 +60,7 @@ void PancakeEnvironment::get_successors(uint32_t u_id, std::vector<uint32_t>& ne
   }
 }
 
-HeavyPancakeEnvironment::HeavyPancakeEnvironment(uint32_t seed, uint32_t capacity) : capacity_(capacity) {
+HeavyPancakeEnvironment::HeavyPancakeEnvironment(uint32_t seed, uint32_t capacity) : capacity_(capacity), seed_(seed) {
   std::iota(goal_state_.begin(), goal_state_.end(), 0);
   pool_.reserve(capacity_);
   node_states_.reserve(capacity_);
@@ -70,7 +70,7 @@ HeavyPancakeEnvironment::HeavyPancakeEnvironment(uint32_t seed, uint32_t capacit
 
 uint32_t HeavyPancakeEnvironment::generate_start_node() {
   start_state_ = goal_state_;
-  std::mt19937 g(42); 
+  std::mt19937 g(seed_); 
   std::shuffle(start_state_.begin(), start_state_.end(), g);
   return get_or_create_id(start_state_);
 }

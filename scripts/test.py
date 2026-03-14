@@ -2,8 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # 1. Load your compiled data
-#input_files = ['csv/compiled_korf100_data.csv', 'csv/compiled_pancake40_data.csv', 'csv/compiled_grid_data.csv']
-input_files = ['csv/extra_csv/compiled_astar_heavy_pancake_data.csv']
+input_files = ['csv/csv_4/compiled_binary_heavy_korf_data.csv']
 for input_file in input_files:
   df = pd.read_csv(input_file)
   df['total_overhead_ms'] = df['total_overhead_ns'] / 1_000_000
@@ -30,4 +29,4 @@ for input_file in input_files:
   print("--- Algorithm Performance Means ---")
   print(analysis_df)
 
-  analysis_df.to_csv('csv/astar_csv/astar_heavy_pancake_10.csv', index=False)
+  analysis_df.to_csv('csv/astar_csv/binary_heavy_korf.csv', index=False)

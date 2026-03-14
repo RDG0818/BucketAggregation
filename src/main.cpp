@@ -45,6 +45,7 @@ void write_csv_header(std::ostream& out) {
     out << "environment,instance,algorithm_description,"
         << "solution_cost,nodes_expanded,nodes_generated,total_time_ms,memory_peak_kb,"
         << "count_enqueue,time_enqueue_ns,count_dequeue,time_dequeue_ns,count_rebuild,time_rebuild_ns,"
+        << "count_decrease_key,time_decrease_key_ns,"
         << "count_stale_pops,count_update_pushes,wasted_time_ns,total_overhead_ns\n";
 }
 
@@ -53,7 +54,7 @@ void write_csv_row(std::ostream& out, const BenchmarkResult& result) {
     const auto& s = result.stats;
     double avg_deq_ns = (s.count_dequeue > 0) ? (s.time_dequeue / s.count_dequeue) : 0;
     double wasted_time_ns = avg_deq_ns * s.count_stale_pops;
-    double total_overhead_ns = s.time_enqueue + s.time_dequeue + s.time_rebuild;
+    double total_overhead_ns = s.time_enqueue + s.time_dequeue + s.time_rebuild + s.time_decrease_key;
     out << result.environment_name << ","
         << result.instance_id << ","
         << "\"" << result.description << "\"" << ","
@@ -68,6 +69,8 @@ void write_csv_row(std::ostream& out, const BenchmarkResult& result) {
         << s.time_dequeue << ","
         << s.count_rebuild << ","
         << s.time_rebuild << ","
+        << s.count_decrease_key << ","
+        << s.time_decrease_key << ","
         << s.count_stale_pops << ","
         << s.count_update_pushes << ","
         << wasted_time_ns << ","
@@ -109,14 +112,16 @@ void print_row(std::ostream& out, const BenchmarkResult& result) {
     double avg_enq = s.count_enqueue > 0 ? s.time_enqueue / s.count_enqueue : 0;
     double avg_deq = s.count_dequeue > 0 ? s.time_dequeue / s.count_dequeue : 0;
     double avg_reb = s.count_rebuild > 0 ? s.time_rebuild / s.count_rebuild : 0;
+    double avg_dk  = s.count_decrease_key > 0 ? s.time_decrease_key / s.count_decrease_key : 0;
     double wasted_time_ms = (avg_deq * s.count_stale_pops) / 1000000.0;
 
     out << "  \033[2m" // dim color
               << "Queue Ops -> "
               << "Enq: " << s.count_enqueue << " (" << std::fixed << std::setprecision(1) << avg_enq << " ns), "
               << "Deq: " << s.count_dequeue << " (" << std::fixed << std::setprecision(1) << avg_deq << " ns), "
+              << "D-Key: " << s.count_decrease_key << " (" << std::fixed << std::setprecision(1) << avg_dk << " ns), "
               << "Reb: " << s.count_rebuild << " (" << std::fixed << std::setprecision(1) << avg_reb << " ns), "
-              << "Total Overhead: " << std::fixed << std::setprecision(3) << (s.time_enqueue + s.time_dequeue + s.time_rebuild) / 1000000.0 << " ms"
+              << "Total Overhead: " << std::fixed << std::setprecision(3) << (s.time_enqueue + s.time_dequeue + s.time_rebuild + s.time_decrease_key) / 1000000.0 << " ms"
               << "\033[0m" << std::endl;
     out << "  \033[2m"
               << "Waste     -> "
@@ -223,14 +228,14 @@ void execute_benchmarks(
 
     for (const auto& algo_name : algorithms_to_run) {
         if (algo_name == "astar_binary") {
-            BinaryHeap<uint32_t> heap;
-            process_result(run_benchmark<AStar>(env, heap, "A* with BinaryHeap", !is_file_output, collect_metrics));
+            IndexedDaryHeap<uint32_t, 2> heap;
+            process_result(run_benchmark<AStar>(env, heap, "A* with IndexedHeap (D=2)", !is_file_output, collect_metrics));
         } else if (algo_name == "anytime_astar_binary") {
-            BinaryHeap<uint32_t> heap;
-            process_result(run_benchmark<AnytimeAStar>(env, heap, "Anytime A* with BinaryHeap", !is_file_output, collect_metrics));
+            IndexedDaryHeap<uint32_t, 2> heap;
+            process_result(run_benchmark<AnytimeAStar>(env, heap, "Anytime A* with IndexedHeap (D=2)", !is_file_output, collect_metrics));
         } else if (algo_name == "anastar_binary") {
-            BinaryHeap<double, std::less<double>> heap;
-            process_result(run_benchmark<ANAStar>(env, heap, "ANA* with BinaryHeap", !is_file_output, collect_metrics));
+            IndexedDaryHeap<double, 2, std::less<double>> heap;
+            process_result(run_benchmark<ANAStar>(env, heap, "ANA* with IndexedHeap (D=2)", !is_file_output, collect_metrics));
         } else if (algo_name == "anastar_bucket") {
             ANAStarPriorityCalculator calculator;
             std::string desc = "ANA* with BucketHeap (D=" + std::to_string(d_ary) + ")";
