@@ -51,7 +51,7 @@ class PancakeEnvironment {
 
 public:
 
-  static constexpr size_t N = 40;
+  static constexpr size_t N = 48;
   using T = std::array<uint8_t, N>;
 
   // FNV-1a Hash
@@ -78,14 +78,16 @@ public:
     uint32_t gaps = 0;
     
     for (size_t i = 0; i < state.size() - 1; i++) {
-      int diff = std::abs((int)state[i] - (int)state[i+1]);
-      if (diff > 1) {
+      if (std::abs((int)state[i] - (int)state[i+1]) > 1) {
         gaps++;
       }
     }
-    if (gaps == 0 && !is_goal(id)) {
-        return 1;
+    
+    // Plate boundary check: goal is 0, 1, ..., N-1. Plate is effectively N.
+    if (state[N-1] != (uint8_t)(N - 1)) {
+      gaps++;
     }
+
     return gaps;
   }
 
@@ -240,16 +242,14 @@ public:
     uint32_t h = 0;
     
     for (size_t i = 0; i < state.size() - 1; i++) {
-      int diff = std::abs((int)state[i] - (int)state[i+1]);
-      if (diff > 1) {
+      if (std::abs((int)state[i] - (int)state[i+1]) > 1) {
         h += std::min(state[i], state[i+1]);
       }
     }
 
-    if (h == 0 && !is_goal(id)) {
-        // This means we have a reversed sequence, e.g., [4, 3, 2, 1]
-        // A single flip of the whole stack is needed.
-        return std::max(state[0], state.back());
+    // Plate boundary check
+    if (state[N-1] != (uint8_t)(N - 1)) {
+        h += std::min((int)state[N-1], (int)N);
     }
     
     return h;

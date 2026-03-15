@@ -171,9 +171,9 @@ BenchmarkResult run_benchmark(Environment& env, Queue& queue, const std::string&
         });
     }
 
-    auto start_time = std::chrono::high_resolution_clock::now();
+    auto start_time = std::chrono::steady_clock::now();
     solver.solve();
-    auto end_time = std::chrono::high_resolution_clock::now();
+    auto end_time = std::chrono::steady_clock::now();
     
     if (show_spinner) {
         done = true;
