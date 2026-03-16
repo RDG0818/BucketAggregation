@@ -191,7 +191,8 @@ public:
     pool_.clear();
   }
 
-  utils::QueueDetailedMetrics get_detailed_metrics() const {
+  template <typename Validator>
+  utils::QueueDetailedMetrics get_detailed_metrics(Validator&& is_stale) const {
     utils::QueueDetailedMetrics m;
     m.primary_buckets_total = f_buckets_.size();
     m.f_min = f_min_;
@@ -213,6 +214,7 @@ public:
       uint32_t local_h_min = INF_COST;
       uint32_t local_h_max = 0;
       size_t local_sec_nonempty = 0;
+      bool p_bucket_has_logical = false;
 
       for (uint32_t h = 0; h < p_bucket.h_buckets.size(); ++h) {
         const auto& s_bucket = p_bucket.h_buckets[h];
@@ -224,15 +226,32 @@ public:
         if (h > local_h_max) local_h_max = h;
 
         size_t node_count = 0;
+        size_t logical_node_count = 0;
         Block* curr = s_bucket.head;
         uint32_t top = s_bucket.top;
         while (curr) {
+          for (uint32_t i = 0; i < top; ++i) {
+            if (!is_stale(curr->elements[i], f, h)) {
+              logical_node_count++;
+            }
+          }
           node_count += top;
           curr = curr->next;
           top = Block::SIZE;
         }
+
+        if (logical_node_count > 0) {
+          m.logical_secondary_nonempty++;
+          m.logical_nodes_total += logical_node_count;
+          p_bucket_has_logical = true;
+        }
+
         m.h_distribution[h] += node_count;
         nodes_per_sec_vals.push_back(node_count);
+      }
+
+      if (p_bucket_has_logical) {
+        m.logical_primary_nonempty++;
       }
 
       if (local_h_min != INF_COST) {
@@ -259,6 +278,11 @@ public:
     calculate_stats(nodes_per_sec_vals, m.nodes_per_sec_mean, m.nodes_per_sec_stddev);
 
     return m;
+  }
+
+  utils::QueueDetailedMetrics get_detailed_metrics() const {
+    auto is_stale_stub = [](uint32_t, uint32_t, uint32_t) { return false; };
+    return get_detailed_metrics(is_stale_stub);
   }
 
   template <typename T> void rebuild(T) {}

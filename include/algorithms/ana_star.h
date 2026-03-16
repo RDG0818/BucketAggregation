@@ -81,7 +81,11 @@ void solve() {
 
     if (collect_metrics_ && expansions_count % metric_interval == 0 && expansions_count > 0) {
       if constexpr (utils::has_get_detailed_metrics<PQ>::value) {
-        auto m = priority_queue_.get_detailed_metrics();
+        auto is_stale = [&](uint32_t id, uint32_t, uint32_t) {
+            // Note: Potential function is complex, but g-cost remains best check
+            return pool.is_closed(id);
+        };
+        auto m = priority_queue_.get_detailed_metrics(is_stale);
         m.expansions = expansions_count;
         print_detailed_metrics(m);
       }

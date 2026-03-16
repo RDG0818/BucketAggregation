@@ -54,7 +54,10 @@ public:
     while (!priority_queue_.empty()) {
       if (collect_metrics_ && expansions_count % metric_interval == 0 && expansions_count > 0) {
         if constexpr (utils::has_get_detailed_metrics<PQ>::value) {
-          auto m = priority_queue_.get_detailed_metrics();
+          auto is_stale = [&](uint32_t id, uint32_t f, uint32_t h) {
+              return pool.is_closed(id) || (f - h > pool.get_g(id));
+          };
+          auto m = priority_queue_.get_detailed_metrics(is_stale);
           m.expansions = expansions_count;
           print_detailed_metrics(m);
         }

@@ -243,13 +243,21 @@ public:
     
     for (size_t i = 0; i < state.size() - 1; i++) {
       if (std::abs((int)state[i] - (int)state[i+1]) > 1) {
-        h += std::min(state[i], state[i+1]);
+        if (use_heavy_heuristic_) {
+          h += std::min(state[i], state[i+1]);
+        } else {
+          h += 1;
+        }
       }
     }
 
     // Plate boundary check
     if (state[N-1] != (uint8_t)(N - 1)) {
-        h += std::min((int)state[N-1], (int)N);
+        if (use_heavy_heuristic_) {
+          h += std::min((int)state[N-1], (int)N);
+        } else {
+          h += 1;
+        }
     }
     
     return h;
@@ -282,6 +290,8 @@ public:
   const T& get_state(uint32_t id) const { return node_states_[id]; }
   uint32_t get_or_create_id(const T& state);
 
+  void set_heavy_heuristic(bool use_heavy) { use_heavy_heuristic_ = use_heavy; }
+
 private:
 
   uint32_t capacity_;
@@ -294,6 +304,7 @@ private:
   T goal_state_;
   uint32_t goal_id_;
   uint32_t seed_;
+  bool use_heavy_heuristic_ = true;
 
 };
 
@@ -315,7 +326,11 @@ public:
     for (int i = 0; i < 16; i++) {
       int tile = get_tile(state, i);
       if (tile == 0) continue;
-      h += MD_TABLE[tile][i] * tile; // Heavy Heuristic: MD * weight
+      if (use_heavy_heuristic_) {
+        h += MD_TABLE[tile][i] * tile; // Heavy Heuristic: MD * weight
+      } else {
+        h += MD_TABLE[tile][i]; // Standard Heuristic: unit weight
+      }
     }
     return h;
   }
@@ -348,6 +363,8 @@ public:
   T get_state(uint32_t id) const { return node_states_[id]; }
   uint32_t get_or_create_id(T state);
 
+  void set_heavy_heuristic(bool use_heavy) { use_heavy_heuristic_ = use_heavy; }
+
 private:
 
   uint32_t capacity_;
@@ -359,6 +376,7 @@ private:
   T start_state_;
   T goal_state_;
   uint32_t goal_id_;
+  bool use_heavy_heuristic_ = true;
 
   // Re-declare needed tables 
   static const int8_t MOVES[16][4];

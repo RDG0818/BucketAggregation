@@ -368,6 +368,7 @@ int main(int argc, char** argv) {
         ("msa-betas", "CSV for MSA beta", cxxopts::value<std::string>()->default_value("1"))
         ("msa-ds", "CSV for MSA D", cxxopts::value<std::string>()->default_value("2"))
         ("num-msa", "Number of random MSA instances to run", cxxopts::value<int>()->default_value("6"))
+        ("non-heavy-heuristic", "Use non-heavy (unit cost) heuristic for heavy environments", cxxopts::value<bool>()->default_value("false"))
 
         ("e,environments", "Comma-separated list of environments (grid, pancake, korf100, random_grid, heavy_pancake, heavy_korf100, msa)", cxxopts::value<std::string>()->default_value("grid,pancake,korf100"))
         ("l,algorithms", "Comma-separated list of algorithms to run", cxxopts::value<std::string>()->default_value("astar_binary,anytime_astar_binary,anastar_binary,anastar_bucket,anastar_logbucket,anastar_realbucket,astar_agg_two_level"))
@@ -560,6 +561,7 @@ int main(int argc, char** argv) {
                     print_header(out);
                 }
                 HeavyPancakeEnvironment heavy_pancake_env(42 + i, 50000000);
+                heavy_pancake_env.set_heavy_heuristic(!result["non-heavy-heuristic"].as<bool>());
                 heavy_pancake_env.generate_start_node();
 
                 if (!once_off_algos.empty()) {
@@ -602,6 +604,7 @@ int main(int argc, char** argv) {
                 try {
                     // Note: Using the new HeavySlidingTileEnvironment class
                     HeavySlidingTileEnvironment heavy_tile_env(index, "korf100.txt", 20000000);
+                    heavy_tile_env.set_heavy_heuristic(!result["non-heavy-heuristic"].as<bool>());
 
                     if (!once_off_algos.empty()) {
                         execute_benchmarks(heavy_tile_env, once_off_algos, 0, 0, 0, out, file_output, env_name, index, result["metrics"].as<bool>());

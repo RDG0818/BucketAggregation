@@ -71,6 +71,15 @@ public:
     return calculator_;
   }
 
+  template<typename Validator>
+  utils::QueueDetailedMetrics get_detailed_metrics(Validator&& v) const {
+    return buckets_.get_detailed_metrics(std::forward<Validator>(v));
+  }
+
+  utils::QueueDetailedMetrics get_detailed_metrics() const {
+    return buckets_.get_detailed_metrics();
+  }
+
 private:
   static constexpr int LogBaseExponent = (D > 1) ? std::bit_width(static_cast<unsigned int>(D) - 1) : 1;
   LogBucketQueue<LogBaseExponent> buckets_;

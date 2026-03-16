@@ -24,6 +24,11 @@ struct QueueDetailedMetrics {
   size_t primary_buckets_nonempty = 0;
   size_t secondary_buckets_total = 0;
   size_t secondary_buckets_nonempty = 0;
+  
+  size_t logical_nodes_total = 0;
+  size_t logical_primary_nonempty = 0;
+  size_t logical_secondary_nonempty = 0;
+
   uint32_t f_min = 0, f_max = 0;
   
   double h_min_mean = 0, h_min_stddev = 0;
@@ -35,6 +40,7 @@ struct QueueDetailedMetrics {
 
   static void write_csv_header(std::ostream& out) {
     out << "expansions,primary_total,primary_nonempty,secondary_total,secondary_nonempty,"
+        << "logical_nodes,logical_primary_nonempty,logical_secondary_nonempty,"
         << "f_min,f_max,h_min_mean,h_min_stddev,h_max_mean,h_max_stddev,"
         << "sec_per_pri_mean,sec_per_pri_stddev,nodes_per_sec_mean,nodes_per_sec_stddev\n";
   }
@@ -42,6 +48,7 @@ struct QueueDetailedMetrics {
   void write_csv_row(std::ostream& out) const {
     out << expansions << "," << primary_buckets_total << "," << primary_buckets_nonempty << ","
         << secondary_buckets_total << "," << secondary_buckets_nonempty << ","
+        << logical_nodes_total << "," << logical_primary_nonempty << "," << logical_secondary_nonempty << ","
         << f_min << "," << f_max << "," 
         << h_min_mean << "," << h_min_stddev << ","
         << h_max_mean << "," << h_max_stddev << ","
@@ -112,6 +119,12 @@ struct has_get_detailed_metrics : std::false_type {};
 
 template<typename Q>
 struct has_get_detailed_metrics<Q, std::void_t<decltype(std::declval<Q>().get_detailed_metrics())>> : std::true_type {};
+
+template<typename Q, typename V, typename = std::void_t<>>
+struct has_get_detailed_metrics_v : std::false_type {};
+
+template<typename Q, typename V>
+struct has_get_detailed_metrics_v<Q, V, std::void_t<decltype(std::declval<Q>().get_detailed_metrics(std::declval<V>()))>> : std::true_type {};
 
 template<typename Q, typename = std::void_t<>>
 struct has_contains : std::false_type {};
@@ -186,6 +199,14 @@ public:
 
   auto& get_calculator() {
     return queue_.get_calculator();
+  }
+
+  template<typename Validator>
+  utils::QueueDetailedMetrics get_detailed_metrics(Validator&& v) {
+    if constexpr (has_get_detailed_metrics_v<QueueType, Validator>::value) {
+      return queue_.get_detailed_metrics(std::forward<Validator>(v));
+    }
+    return utils::QueueDetailedMetrics();
   }
 
   utils::QueueDetailedMetrics get_detailed_metrics() {

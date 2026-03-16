@@ -77,8 +77,9 @@ public:
     return calculator_;
   }
 
-  utils::QueueDetailedMetrics get_detailed_metrics() const {
-    auto m = buckets_.get_detailed_metrics();
+  template<typename Validator>
+  utils::QueueDetailedMetrics get_detailed_metrics(Validator&& v) const {
+    auto m = buckets_.get_detailed_metrics(std::forward<Validator>(v));
     m.h_min_mean *= alpha_;
     m.h_min_stddev *= alpha_;
     m.h_max_mean *= alpha_;
@@ -92,6 +93,11 @@ public:
     m.h_distribution = std::move(scaled_dist);
     
     return m;
+  }
+
+  utils::QueueDetailedMetrics get_detailed_metrics() const {
+    auto is_stale_stub = [](uint32_t, uint32_t, uint32_t) { return false; };
+    return get_detailed_metrics(is_stale_stub);
   }
 
 private:
