@@ -46,13 +46,22 @@ def extract_plot_data(data):
     res = {'enqueue': 0, 'dequeue': 0, 'wasted': 0, 'rebuild': 0}
     if data is None: return res
     
+    desc = data.get('algorithm_description', '')
+    is_indexed = 'IndexedHeap' in desc
+
     res['enqueue'] = data.get('time_enqueue_ns', 0) / NS_TO_MS
-    res['wasted'] = data.get('wasted_time_ns', 0) / NS_TO_MS
-    res['dequeue'] = (data.get('time_dequeue_ns', 0) - data.get('wasted_time_ns', 0)) / NS_TO_MS
     res['rebuild'] = data.get('time_rebuild_ns', 0) / NS_TO_MS
+
+    if is_indexed:
+        res['wasted'] = data.get('time_decrease_key_ns', 0) / NS_TO_MS
+        res['dequeue'] = data.get('time_dequeue_ns', 0) / NS_TO_MS
+    else:
+        res['wasted'] = data.get('wasted_time_ns', 0) / NS_TO_MS
+        res['dequeue'] = (data.get('time_dequeue_ns', 0) - data.get('wasted_time_ns', 0)) / NS_TO_MS
+        
     return res
 
-def plot_results(all_env_data, output_filename):
+def plot_results(all_env_data, output_filename, is_astar=False):
     if not all_env_data:
         return
 
@@ -65,6 +74,11 @@ def plot_results(all_env_data, output_filename):
     
     components = ['enqueue', 'dequeue', 'wasted', 'rebuild']
     component_labels = ['Enqueue', 'Dequeue', 'Change Key', 'Reorder/Rebuild']
+
+    if is_astar:
+        components = ['enqueue', 'dequeue', 'wasted']
+        component_labels = ['Enqueue', 'Dequeue', 'Change Key']
+
     colors = {'enqueue': '#E0E0E0', 'dequeue': '#A0A0A0', 'wasted': '#606060', 'rebuild': '#202020'}
     hatches = {'enqueue': '\\\\', 'dequeue': '/', 'wasted': '|', 'rebuild': ''}
 
@@ -72,7 +86,7 @@ def plot_results(all_env_data, output_filename):
         ax = axes[i]
         env_name = env_entry['title']
         data = env_entry['data']
-        ax.set_title(env_name, fontsize=16, weight='bold')
+        ax.set_title(env_name, fontsize=19, weight='bold')
         
         for j, alg_key in enumerate(algorithms):
             p_data = extract_plot_data(data[alg_key])
@@ -88,18 +102,19 @@ def plot_results(all_env_data, output_filename):
             labels[2] = f"Bucket\nOpt α={data['Optimal Alpha Value']}"
         
         ax.set_xticks(x_pos)
-        ax.set_xticklabels(labels, fontsize=10)
+        ax.set_xticklabels(labels, fontsize=14)
+        ax.tick_params(axis='y', labelsize=12)
         ax.grid(axis='y', linestyle='--', alpha=0.5)
         if i == 0:
-            ax.set_ylabel('Priority Queue Overhead (ms)', fontsize=12)
+            ax.set_ylabel('Priority Queue Overhead (ms)', fontsize=16)
 
     from matplotlib.patches import Patch
     legend_elements = [Patch(facecolor=colors[comp], edgecolor='black', hatch=hatches[comp], label=label) 
                        for comp, label in zip(components, component_labels)]
     
-    # Place legend above the rightmost subplot
-    axes[-1].legend(handles=legend_elements, loc='lower right', bbox_to_anchor=(1.0, 1.12), 
-                   fontsize=10, ncol=1, frameon=False)
+    # Place legend in the upper right corner of the rightmost subplot
+    axes[-1].legend(handles=legend_elements, loc='upper right', 
+                   fontsize=14, ncol=1, frameon=True, facecolor='white', framealpha=0.8)
 
     fig.tight_layout()
     plt.savefig(output_filename, dpi=300)
@@ -143,7 +158,7 @@ def main():
         astar_df = combined_df[combined_df['algorithm_description'].str.startswith('A*')]
         if not astar_df.empty:
             res = get_best_in_group(astar_df, 
-                                    binary_pattern='BinaryHeap', 
+                                    binary_pattern='IndexedHeap', 
                                     alpha_1_pattern=r'a=1[,)]|BucketHeap \(D=', 
                                     opt_alpha_pattern=r'a=\d+')
             astar_all.append({'title': title, 'data': res})
@@ -152,13 +167,13 @@ def main():
         anastar_df = combined_df[combined_df['algorithm_description'].str.contains('ANA|Anytime')]
         if not anastar_df.empty:
             res = get_best_in_group(anastar_df, 
-                                    binary_pattern='BinaryHeap', 
+                                    binary_pattern='IndexedHeap', 
                                     alpha_1_pattern=r'a=1[,)]|BucketHeap \(D=', 
                                     opt_alpha_pattern=r'a=\d+')
             anastar_all.append({'title': title, 'data': res})
 
-    plot_results(astar_all, args.output_astar)
-    plot_results(anastar_all, args.output_anastar)
+    plot_results(astar_all, args.output_astar, is_astar=True)
+    plot_results(anastar_all, args.output_anastar, is_astar=False)
 
 if __name__ == '__main__':
     main()

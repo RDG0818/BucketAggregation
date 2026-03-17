@@ -182,6 +182,16 @@ public:
     f_min_ = f;
   }
 
+  uint32_t get_f_min() const {
+    while (f_min_ < f_buckets_.size() && f_buckets_[f_min_].count == 0) {
+      f_min_++;
+    }
+    return f_min_;
+  }
+
+  uint32_t get_alpha() const { return 1; }
+  uint32_t get_beta() const { return 1; }
+
   bool empty() const { return count_ == 0; };
 
   void clear() {
@@ -324,7 +334,7 @@ private:
   }
 
   std::vector<PrimaryBucket> f_buckets_;
-  uint32_t f_min_;
+  mutable uint32_t f_min_;
   size_t count_;
   BlockPool pool_;
 };

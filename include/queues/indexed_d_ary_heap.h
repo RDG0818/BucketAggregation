@@ -47,6 +47,11 @@ public:
     return heap_[0].id;
   }
 
+  PriorityType top_priority() {
+    if (heap_.empty()) return std::numeric_limits<PriorityType>::max();
+    return heap_[0].priority;
+  }
+
   void remove(uint32_t id) {
     if (contains(id)) {
       remove_at_index(id_to_index_[id]);

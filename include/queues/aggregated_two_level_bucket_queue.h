@@ -84,7 +84,38 @@ public:
     return pop_from_bucket(f_buckets_[f_min_]);
   }
 
+  uint32_t pop_from(uint32_t f_idx) {
+    if (f_idx >= f_buckets_.size() || f_buckets_[f_idx].count == 0) {
+      return NODE_NULL;
+    }
+    return pop_from_bucket(f_buckets_[f_idx]);
+  }
+
   bool empty() const { return count_ == 0; };
+
+  uint32_t get_f_min() const {
+    while (f_min_ < f_buckets_.size() && f_buckets_[f_min_].count == 0) {
+      f_min_++;
+    }
+    return f_min_;
+  }
+
+  uint32_t get_f_min_raw() const {
+    return get_f_min() * beta_;
+  }
+
+  uint32_t get_alpha() const { return alpha_; }
+  uint32_t get_beta() const { return beta_; }
+
+  size_t get_node_count(uint32_t f_idx) const {
+    if (f_idx >= f_buckets_.size()) return 0;
+    return f_buckets_[f_idx].count;
+  }
+
+  uint32_t get_h_min(uint32_t f_idx) const {
+    if (f_idx >= f_buckets_.size()) return INF_COST;
+    return f_buckets_[f_idx].h_min;
+  }
 
   utils::QueueDetailedMetrics get_detailed_metrics() const {
     utils::QueueDetailedMetrics m;
@@ -202,7 +233,7 @@ private:
   }
 
   std::vector<PrimaryBucket> f_buckets_;
-  uint32_t f_min_;
+  mutable uint32_t f_min_;
   size_t count_;
   BlockPool pool_;
   uint32_t alpha_;

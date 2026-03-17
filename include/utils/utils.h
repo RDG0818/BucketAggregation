@@ -171,6 +171,28 @@ public:
     return handle;
   }
 
+  uint32_t top() { return queue_.top(); }
+  auto top_priority() { return queue_.top_priority(); }
+  void remove(uint32_t id) { queue_.remove(id); }
+  void change_priority(uint32_t id, auto p, uint32_t h = 0) { queue_.change_priority(id, p, h); }
+  bool contains(uint32_t id) const { return queue_.contains(id); }
+  
+  uint32_t get_f_min() const { return queue_.get_f_min(); }
+  uint32_t get_f_min_raw() const { return queue_.get_f_min_raw(); }
+  uint32_t get_alpha() const { return queue_.get_alpha(); }
+  uint32_t get_beta() const { return queue_.get_beta(); }
+  
+  uint32_t pop_from(uint32_t f) { 
+    auto start = std::chrono::steady_clock::now();
+    uint32_t handle = queue_.pop_from(f);
+    auto end = std::chrono::steady_clock::now();
+    stats_.time_dequeue += std::chrono::duration<double, std::nano>(end - start).count();
+    stats_.count_dequeue++;
+    return handle; 
+  }
+  size_t get_node_count(uint32_t f) const { return queue_.get_node_count(f); }
+  uint32_t get_h_min(uint32_t f) const { return queue_.get_h_min(f); }
+
   // ANA* Rebuild support
   template<typename Func>
   void rebuild(Func calculate_priority) {

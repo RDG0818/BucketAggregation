@@ -22,6 +22,7 @@
 #include "algorithms/a_star.h"
 #include "algorithms/anytime_a_star.h"
 #include "algorithms/ana_star.h"
+#include "algorithms/focal_search.h"
 #include "environments/environments.h"
 #include "queues/binary_heap.h"
 #include "queues/bucket_queue.h"
@@ -214,7 +215,8 @@ void execute_benchmarks(
     bool is_file_output,
     const std::string& env_name,
     int instance_id,
-    bool collect_metrics) 
+    bool collect_metrics,
+    double focal_w) 
 {
     auto process_result = [&](BenchmarkResult result) {
         result.environment_name = env_name;
@@ -230,12 +232,55 @@ void execute_benchmarks(
         if (algo_name == "astar_binary") {
             IndexedDaryHeap<uint32_t, 2> heap;
             process_result(run_benchmark<AStar>(env, heap, "A* with IndexedHeap (D=2)", !is_file_output, collect_metrics));
+        } else if (algo_name == "astar_bucket") {
+            BucketQueue queue;
+            process_result(run_benchmark<AStar>(env, queue, "A* with BucketQueue", !is_file_output, collect_metrics));
         } else if (algo_name == "anytime_astar_binary") {
             IndexedDaryHeap<uint32_t, 2> heap;
             process_result(run_benchmark<AnytimeAStar>(env, heap, "Anytime A* with IndexedHeap (D=2)", !is_file_output, collect_metrics));
         } else if (algo_name == "anastar_binary") {
             IndexedDaryHeap<double, 2, std::less<double>> heap;
             process_result(run_benchmark<ANAStar>(env, heap, "ANA* with IndexedHeap (D=2)", !is_file_output, collect_metrics));
+        } else if (algo_name == "focal_binary") {
+            IndexedDaryHeap<uint32_t, 2, std::greater<uint32_t>> open_pq;
+            IndexedDaryHeap<uint32_t, 2, std::greater<uint32_t>> focal_pq;
+            
+            utils::SearchStats stats;
+            using ProfiledHeap = utils::ProfiledQueue<IndexedDaryHeap<uint32_t, 2, std::greater<uint32_t>>>;
+            
+            ProfiledHeap p_open(open_pq, stats);
+            ProfiledHeap p_focal(focal_pq, stats);
+            
+            FocalSearch<Environment, ProfiledHeap, ProfiledHeap> solver(env, p_open, p_focal, &stats, collect_metrics, focal_w);
+            
+            auto start_time = std::chrono::steady_clock::now();
+            solver.solve();
+            auto end_time = std::chrono::steady_clock::now();
+            stats.total_time_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+            stats.memory_peak_kb = utils::get_peak_memory_kb();
+            
+            process_result({"Focal Search (Two Heaps, w=" + std::to_string(focal_w) + ")", stats, env_name, instance_id});
+        } else if (algo_name == "focal_bucket") {
+            AggregatedTwoLevelBucketQueue buckets(alpha, beta);
+            IndexedDaryHeap<uint32_t, 2, std::greater<uint32_t>> focal_heap;
+            
+            utils::SearchStats stats;
+            using ProfiledBuckets = utils::ProfiledQueue<AggregatedTwoLevelBucketQueue>;
+            using ProfiledHeap = utils::ProfiledQueue<IndexedDaryHeap<uint32_t, 2, std::greater<uint32_t>>>;
+            
+            ProfiledBuckets p_buckets(buckets, stats);
+            ProfiledHeap p_heap(focal_heap, stats);
+            
+            BucketFocalSearch<Environment, ProfiledBuckets, ProfiledHeap> solver(env, p_buckets, p_heap, &stats, collect_metrics, focal_w);
+            
+            auto start_time = std::chrono::steady_clock::now();
+            solver.solve();
+            auto end_time = std::chrono::steady_clock::now();
+            stats.total_time_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+            stats.memory_peak_kb = utils::get_peak_memory_kb();
+            
+            std::string full_desc = "Focal Search (Aggregated Buckets, a=" + std::to_string(alpha) + ", b=" + std::to_string(beta) + ", w=" + std::to_string(focal_w) + ")";
+            process_result({full_desc, stats, env_name, instance_id});
         } else if (algo_name == "anastar_bucket") {
             ANAStarPriorityCalculator calculator;
             std::string desc = "ANA* with BucketHeap (D=" + std::to_string(d_ary) + ")";
@@ -369,9 +414,10 @@ int main(int argc, char** argv) {
         ("msa-ds", "CSV for MSA D", cxxopts::value<std::string>()->default_value("2"))
         ("num-msa", "Number of random MSA instances to run", cxxopts::value<int>()->default_value("6"))
         ("non-heavy-heuristic", "Use non-heavy (unit cost) heuristic for heavy environments", cxxopts::value<bool>()->default_value("false"))
+        ("focal-w", "Suboptimality bound for Focal Search", cxxopts::value<double>()->default_value("1.5"))
 
         ("e,environments", "Comma-separated list of environments (grid, pancake, korf100, random_grid, heavy_pancake, heavy_korf100, msa)", cxxopts::value<std::string>()->default_value("grid,pancake,korf100"))
-        ("l,algorithms", "Comma-separated list of algorithms to run", cxxopts::value<std::string>()->default_value("astar_binary,anytime_astar_binary,anastar_binary,anastar_bucket,anastar_logbucket,anastar_realbucket,astar_agg_two_level"))
+        ("l,algorithms", "Comma-separated list of algorithms to run", cxxopts::value<std::string>()->default_value("astar_binary,astar_bucket,anytime_astar_binary,anastar_binary,anastar_bucket,anastar_logbucket,anastar_realbucket,astar_agg_two_level"))
         ("h,help", "Print usage");
 
     auto result = options.parse(argc, argv);
@@ -404,7 +450,7 @@ int main(int argc, char** argv) {
     std::vector<std::string> algorithms_to_run;
     std::string algo_str = result["algorithms"].as<std::string>();
     if (algo_str == "all") {
-        algorithms_to_run = {"astar_binary", "anytime_astar_binary", "anastar_binary", "anastar_bucket", "anastar_logbucket", "anastar_realbucket", "astar_agg_two_level"};
+        algorithms_to_run = {"astar_binary", "astar_bucket", "anytime_astar_binary", "anastar_binary", "anastar_bucket", "anastar_logbucket", "anastar_realbucket", "astar_agg_two_level"};
     } else {
         algorithms_to_run = parse_list<std::string>(algo_str);
     }
@@ -413,7 +459,7 @@ int main(int argc, char** argv) {
     std::vector<std::string> d_sweep_algos;
     std::vector<std::string> full_sweep_algos;
     for(const auto& algo : algorithms_to_run) {
-        if (algo == "anastar_realbucket" || algo == "astar_agg_two_level") {
+        if (algo == "anastar_realbucket" || algo == "astar_agg_two_level" || algo == "focal_bucket") {
             full_sweep_algos.push_back(algo);
         } else if (algo == "anastar_bucket" || algo == "anastar_logbucket") {
             d_sweep_algos.push_back(algo);
@@ -445,13 +491,13 @@ int main(int argc, char** argv) {
                 GridEnvironment grid_env(result["grid-width"].as<int>(), result["grid-height"].as<int>(), 1 + i);
                 
                 if (!once_off_algos.empty()) {
-                    execute_benchmarks(grid_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>());
+                    execute_benchmarks(grid_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
                 }
                 
                 if (!d_sweep_algos.empty()) {
                     auto ds = parse_list<int>(result["grid-ds"].as<std::string>());
                     for (int d : ds) {
-                        execute_benchmarks(grid_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>());
+                        execute_benchmarks(grid_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
                     }
                 }
 
@@ -462,7 +508,7 @@ int main(int argc, char** argv) {
                     for (int d : ds) {
                         for (uint32_t alpha : alphas) {
                             for (uint32_t beta : betas) {
-                                execute_benchmarks(grid_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>());
+                                execute_benchmarks(grid_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
                             }
                         }
                     }
@@ -484,13 +530,13 @@ int main(int argc, char** argv) {
                 pancake_env.generate_start_node();
 
                 if (!once_off_algos.empty()) {
-                    execute_benchmarks(pancake_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>());
+                    execute_benchmarks(pancake_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
                 }
 
                 if (!d_sweep_algos.empty()) {
                     auto ds = parse_list<int>(result["pancake-ds"].as<std::string>());
                     for (int d : ds) {
-                        execute_benchmarks(pancake_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>());
+                        execute_benchmarks(pancake_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
                     }
                 }
                 
@@ -501,7 +547,7 @@ int main(int argc, char** argv) {
                     for (int d : ds) {
                         for (uint32_t alpha : alphas) {
                             for (uint32_t beta : betas) {
-                                execute_benchmarks(pancake_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>());
+                                execute_benchmarks(pancake_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
                             }
                         }
                     }
@@ -524,13 +570,13 @@ int main(int argc, char** argv) {
                     SlidingTileEnvironment tile_env(index, "korf100.txt", 20000000);
 
                     if (!once_off_algos.empty()) {
-                        execute_benchmarks(tile_env, once_off_algos, 0, 0, 0, out, file_output, env_name, index, result["metrics"].as<bool>());
+                        execute_benchmarks(tile_env, once_off_algos, 0, 0, 0, out, file_output, env_name, index, result["metrics"].as<bool>(), result["focal-w"].as<double>());
                     }
                     
                     auto ds = parse_list<int>(result["korf-ds"].as<std::string>());
                     if (!d_sweep_algos.empty()) {
                         for (int d : ds) {
-                            execute_benchmarks(tile_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, index, result["metrics"].as<bool>());
+                            execute_benchmarks(tile_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, index, result["metrics"].as<bool>(), result["focal-w"].as<double>());
                         }
                     }
 
@@ -540,7 +586,7 @@ int main(int argc, char** argv) {
                         for (int d : ds) {
                             for (uint32_t alpha : alphas) {
                                 for (uint32_t beta : betas) {
-                                    execute_benchmarks(tile_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, index, result["metrics"].as<bool>());
+                                    execute_benchmarks(tile_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, index, result["metrics"].as<bool>(), result["focal-w"].as<double>());
                                 }
                             }
                         }
@@ -565,13 +611,13 @@ int main(int argc, char** argv) {
                 heavy_pancake_env.generate_start_node();
 
                 if (!once_off_algos.empty()) {
-                    execute_benchmarks(heavy_pancake_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>());
+                    execute_benchmarks(heavy_pancake_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
                 }
 
                 if (!d_sweep_algos.empty()) {
                     auto ds = parse_list<int>(result["pancake-ds"].as<std::string>());
                     for (int d : ds) {
-                        execute_benchmarks(heavy_pancake_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>());
+                        execute_benchmarks(heavy_pancake_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
                     }
                 }
                 
@@ -582,7 +628,7 @@ int main(int argc, char** argv) {
                     for (int d : ds) {
                         for (uint32_t alpha : alphas) {
                             for (uint32_t beta : betas) {
-                                execute_benchmarks(heavy_pancake_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>());
+                                execute_benchmarks(heavy_pancake_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
                             }
                         }
                     }
@@ -607,13 +653,13 @@ int main(int argc, char** argv) {
                     heavy_tile_env.set_heavy_heuristic(!result["non-heavy-heuristic"].as<bool>());
 
                     if (!once_off_algos.empty()) {
-                        execute_benchmarks(heavy_tile_env, once_off_algos, 0, 0, 0, out, file_output, env_name, index, result["metrics"].as<bool>());
+                        execute_benchmarks(heavy_tile_env, once_off_algos, 0, 0, 0, out, file_output, env_name, index, result["metrics"].as<bool>(), result["focal-w"].as<double>());
                     }
                     
                     auto ds = parse_list<int>(result["korf-ds"].as<std::string>());
                     if (!d_sweep_algos.empty()) {
                         for (int d : ds) {
-                            execute_benchmarks(heavy_tile_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, index, result["metrics"].as<bool>());
+                            execute_benchmarks(heavy_tile_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, index, result["metrics"].as<bool>(), result["focal-w"].as<double>());
                         }
                     }
 
@@ -623,7 +669,7 @@ int main(int argc, char** argv) {
                         for (int d : ds) {
                             for (uint32_t alpha : alphas) {
                                 for (uint32_t beta : betas) {
-                                    execute_benchmarks(heavy_tile_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, index, result["metrics"].as<bool>());
+                                    execute_benchmarks(heavy_tile_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, index, result["metrics"].as<bool>(), result["focal-w"].as<double>());
                                 }
                             }
                         }
@@ -648,13 +694,13 @@ int main(int argc, char** argv) {
                 RandomGridEnvironment rand_grid_env(result["grid-width"].as<int>(), result["grid-height"].as<int>(), result["grid-max-edge-cost"].as<uint32_t>(), 42 + i);
                 
                 if (!once_off_algos.empty()) {
-                    execute_benchmarks(rand_grid_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>());
+                    execute_benchmarks(rand_grid_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
                 }
                 
                 if (!d_sweep_algos.empty()) {
                     auto ds = parse_list<int>(result["grid-ds"].as<std::string>());
                     for (int d : ds) {
-                        execute_benchmarks(rand_grid_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>());
+                        execute_benchmarks(rand_grid_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
                     }
                 }
 
@@ -665,7 +711,7 @@ int main(int argc, char** argv) {
                     for (int d : ds) {
                         for (uint32_t alpha : alphas) {
                             for (uint32_t beta : betas) {
-                                execute_benchmarks(rand_grid_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>());
+                                execute_benchmarks(rand_grid_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
                             }
                         }
                     }
@@ -707,13 +753,13 @@ int main(int argc, char** argv) {
                 MSAEnvironment msa_env(current_sequences, 50000000);
 
                 if (!once_off_algos.empty()) {
-                    execute_benchmarks(msa_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>());
+                    execute_benchmarks(msa_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
                 }
 
                 if (!d_sweep_algos.empty()) {
                     auto ds = parse_list<int>(result["msa-ds"].as<std::string>());
                     for (int d : ds) {
-                        execute_benchmarks(msa_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>());
+                        execute_benchmarks(msa_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
                     }
                 }
 
@@ -724,7 +770,7 @@ int main(int argc, char** argv) {
                     for (int d : ds) {
                         for (uint32_t alpha : alphas) {
                             for (uint32_t beta : betas) {
-                                execute_benchmarks(msa_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>());
+                                execute_benchmarks(msa_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
                             }
                         }
                     }
