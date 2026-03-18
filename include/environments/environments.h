@@ -216,7 +216,7 @@ class HeavyPancakeEnvironment {
 
 public:
 
-  static constexpr size_t N = 11;
+  static constexpr size_t N = 10;
   using T = std::array<uint8_t, N>;
 
   // FNV-1a Hash
@@ -424,9 +424,12 @@ public:
 private:
   void compute_pairwise_heuristics();
   uint32_t compute_transition_cost(const T& u_state, const T& v_state) const;
-  uint32_t get_pairwise_cost(char a, char b) const;
+  
+  static int aa_to_idx(char c);
 
-  std::vector<std::string> sequences_;
+  std::vector<std::vector<uint8_t>> encoded_sequences_;
+  int cost_table_[21][21];
+
   std::vector<int> seq_lengths_;
   std::vector<std::vector<std::vector<uint32_t>>> h_tables_;
 

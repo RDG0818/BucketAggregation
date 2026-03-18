@@ -2,8 +2,8 @@ import pandas as pd
 import glob
 
 # 1. Setup paths and find all files matching the pattern
-input_pattern = 'final_csv/korf_*.csv'
-output_file = 'final_csv/compiled_csv/compiled_korf_data.csv'
+input_pattern = 'final_csv/astar_pancake*.csv'
+output_file = 'final_csv/compiled_csv/astar_more_pancake_data.csv'
 files = glob.glob(input_pattern)
 
 # List to hold the dataframes
