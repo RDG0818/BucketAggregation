@@ -31,13 +31,27 @@ private:
 public:
 
   AggregatedTwoLevelBucketQueue(uint32_t alpha = 1, uint32_t beta = 1, uint32_t f_cap_hint = 1024) 
-  : f_min_(INF_COST), count_(0), pool_(1000, 1000), alpha_(alpha), beta_(beta) {
+  : f_offset_(0), f_min_idx_(INF_COST), count_(0), pool_(1000, 1000), alpha_(alpha), beta_(beta) {
     f_buckets_.reserve(f_cap_hint);
   }
 
   void push(uint32_t id, uint32_t f, uint32_t h) {
-    uint32_t f_idx = f / beta_;
+    uint32_t f_idx_raw = f / beta_;
     uint32_t h_idx = h / alpha_;
+
+    if (count_ == 0) {
+      f_offset_ = f_idx_raw;
+      f_min_idx_ = 0;
+    }
+
+    if (f_idx_raw < f_offset_) {
+      uint32_t delta = f_offset_ - f_idx_raw;
+      f_buckets_.insert(f_buckets_.begin(), delta, PrimaryBucket{});
+      f_offset_ = f_idx_raw;
+      f_min_idx_ = 0;
+    }
+
+    uint32_t f_idx = f_idx_raw - f_offset_;
 
     if (f_idx >= f_buckets_.size()) {
       size_t new_size = std::max<size_t>(f_idx + 1, f_buckets_.size() * 1.5);
@@ -66,25 +80,27 @@ public:
     count_++;
 
     if (h_idx < p_bucket.h_min) p_bucket.h_min = h_idx;
-    if (f_idx < f_min_) f_min_ = f_idx;
+    if (f_idx < f_min_idx_) f_min_idx_ = f_idx;
   }
 
   uint32_t pop() {
     if (count_ == 0) return INF_COST;
 
-    while (f_min_ < f_buckets_.size() && f_buckets_[f_min_].count == 0) {
-      f_min_++;
+    while (f_min_idx_ < f_buckets_.size() && f_buckets_[f_min_idx_].count == 0) {
+      f_min_idx_++;
     }
 
-    if (f_min_ >= f_buckets_.size()) {
+    if (f_min_idx_ >= f_buckets_.size()) {
       count_ = 0;
       return INF_COST;
     }
 
-    return pop_from_bucket(f_buckets_[f_min_]);
+    return pop_from_bucket(f_buckets_[f_min_idx_]);
   }
 
-  uint32_t pop_from(uint32_t f_idx) {
+  uint32_t pop_from(uint32_t f_idx_raw) {
+    if (f_idx_raw < f_offset_) return NODE_NULL;
+    uint32_t f_idx = f_idx_raw - f_offset_;
     if (f_idx >= f_buckets_.size() || f_buckets_[f_idx].count == 0) {
       return NODE_NULL;
     }
@@ -94,10 +110,11 @@ public:
   bool empty() const { return count_ == 0; };
 
   uint32_t get_f_min() const {
-    while (f_min_ < f_buckets_.size() && f_buckets_[f_min_].count == 0) {
-      f_min_++;
+    while (f_min_idx_ < f_buckets_.size() && f_buckets_[f_min_idx_].count == 0) {
+      f_min_idx_++;
     }
-    return f_min_;
+    if (f_min_idx_ >= f_buckets_.size()) return f_offset_ + f_buckets_.size();
+    return f_offset_ + f_min_idx_;
   }
 
   uint32_t get_f_min_raw() const {
@@ -107,12 +124,16 @@ public:
   uint32_t get_alpha() const { return alpha_; }
   uint32_t get_beta() const { return beta_; }
 
-  size_t get_node_count(uint32_t f_idx) const {
+  size_t get_node_count(uint32_t f_idx_raw) const {
+    if (f_idx_raw < f_offset_) return 0;
+    uint32_t f_idx = f_idx_raw - f_offset_;
     if (f_idx >= f_buckets_.size()) return 0;
     return f_buckets_[f_idx].count;
   }
 
-  uint32_t get_h_min(uint32_t f_idx) const {
+  uint32_t get_h_min(uint32_t f_idx_raw) const {
+    if (f_idx_raw < f_offset_) return INF_COST;
+    uint32_t f_idx = f_idx_raw - f_offset_;
     if (f_idx >= f_buckets_.size()) return INF_COST;
     return f_buckets_[f_idx].h_min;
   }
@@ -120,20 +141,20 @@ public:
   utils::QueueDetailedMetrics get_detailed_metrics() const {
     utils::QueueDetailedMetrics m;
     m.primary_buckets_total = f_buckets_.size();
-    m.f_min = f_min_;
-    m.f_max = 0;
+    m.f_min = get_f_min();
+    m.f_max = f_offset_ + f_buckets_.size() - 1;
 
     std::vector<uint32_t> h_mins;
     std::vector<uint32_t> h_maxs;
     std::vector<double> sec_per_pri_vals;
     std::vector<size_t> nodes_per_sec_vals;
 
-    for (uint32_t f = 0; f < f_buckets_.size(); ++f) {
-      const auto& p_bucket = f_buckets_[f];
+    for (uint32_t f_idx = 0; f_idx < f_buckets_.size(); ++f_idx) {
+      const auto& p_bucket = f_buckets_[f_idx];
       if (p_bucket.count == 0) continue;
 
       m.primary_buckets_nonempty++;
-      m.f_max = f;
+      m.f_max = f_offset_ + f_idx;
       m.secondary_buckets_total += p_bucket.h_buckets.size();
 
       uint32_t local_h_min = INF_COST;
@@ -189,7 +210,8 @@ public:
 
   void clear() {
     f_buckets_.clear();
-    f_min_ = INF_COST;
+    f_offset_ = 0;
+    f_min_idx_ = INF_COST;
     count_ = 0;
     pool_.clear();
   }
@@ -233,7 +255,8 @@ private:
   }
 
   std::vector<PrimaryBucket> f_buckets_;
-  mutable uint32_t f_min_;
+  uint32_t f_offset_;
+  mutable uint32_t f_min_idx_;
   size_t count_;
   BlockPool pool_;
   uint32_t alpha_;

@@ -74,7 +74,7 @@ def generate_hero_graph(file_path='data.csv'):
     ax2.set_ylim(df['avg_time_per_node_ns'].min() * 0.95, df['avg_time_per_node_ns'].max() * 1.05)
 
     # 5. Legend and Title
-    plt.title('The Aggregation Trade-off: Queue Speed vs. Search Bloat', fontsize=14, fontweight='bold', pad=20)
+    plt.title('ANA* Heavy Sliding Tile', fontsize=14, fontweight='bold', pad=20)
     
     # Combine legends from both axes into a single consolidated box
     lns = lns1 + lns2
@@ -95,4 +95,4 @@ def generate_hero_graph(file_path='data.csv'):
 
 if __name__ == "__main__":
     # Assumes data.csv is in the project root if run from root
-    generate_hero_graph('means_korf_data_anastar.csv')
+    generate_hero_graph('means_anastar_grid_data.csv')

@@ -99,17 +99,30 @@ private:
 public:
 
   TwoLevelBucketQueue(uint32_t f_cap_hint = 1024) 
-  : f_min_(INF_COST), count_(0), pool_(1000, 1000) {
+  : f_offset_(0), f_min_idx_(INF_COST), count_(0), pool_(1000, 1000) {
     f_buckets_.reserve(f_cap_hint);
   }
 
   void push(uint32_t id, uint32_t f, uint32_t h) {
-    if (f >= f_buckets_.size()) {
-      size_t new_size = std::max<size_t>(f + 1, f_buckets_.size() * 1.5);
+    if (count_ == 0) {
+      f_offset_ = f;
+      f_min_idx_ = 0;
+    }
+
+    if (f < f_offset_) {
+      uint32_t delta = f_offset_ - f;
+      f_buckets_.insert(f_buckets_.begin(), delta, PrimaryBucket{});
+      f_offset_ = f;
+      f_min_idx_ = 0;
+    }
+
+    uint32_t f_idx = f - f_offset_;
+    if (f_idx >= f_buckets_.size()) {
+      size_t new_size = std::max<size_t>(f_idx + 1, f_buckets_.size() * 1.5);
       f_buckets_.resize(new_size);
     }
 
-    auto& p_bucket = f_buckets_[f];
+    auto& p_bucket = f_buckets_[f_idx];
 
     if (h >= p_bucket.h_buckets.size()) {
       size_t new_size = std::max<size_t>(h + 1, p_bucket.h_buckets.size() * 1.5);
@@ -131,62 +144,72 @@ public:
     count_++;
 
     if (h < p_bucket.h_min) p_bucket.h_min = h;
-    if (f < f_min_) f_min_ = f;
+    if (f_idx < f_min_idx_) f_min_idx_ = f_idx;
   }
 
   uint32_t pop() {
     if (count_ == 0) return INF_COST;
 
-    while (f_min_ < f_buckets_.size() && f_buckets_[f_min_].count == 0) {
-      f_min_++;
+    while (f_min_idx_ < f_buckets_.size() && f_buckets_[f_min_idx_].count == 0) {
+      f_min_idx_++;
     }
 
-    if (f_min_ >= f_buckets_.size()) {
+    if (f_min_idx_ >= f_buckets_.size()) {
       count_ = 0;
       return INF_COST;
     }
 
-    return pop_from_bucket(f_buckets_[f_min_]);
+    return pop_from_bucket(f_buckets_[f_min_idx_]);
   }
 
   uint32_t pop_from(uint32_t f) {
-    if (f >= f_buckets_.size() || f_buckets_[f].count == 0) {
+    if (f < f_offset_) return NODE_NULL;
+    uint32_t f_idx = f - f_offset_;
+    if (f_idx >= f_buckets_.size() || f_buckets_[f_idx].count == 0) {
       return NODE_NULL;
     }
 
-    return pop_from_bucket(f_buckets_[f]);
+    return pop_from_bucket(f_buckets_[f_idx]);
   }
 
   size_t get_node_count(uint32_t f) const {
-    if (f >= f_buckets_.size()) return 0;
-    return f_buckets_[f].count;
+    if (f < f_offset_) return 0;
+    uint32_t f_idx = f - f_offset_;
+    if (f_idx >= f_buckets_.size()) return 0;
+    return f_buckets_[f_idx].count;
   }
 
   uint32_t get_h_min(uint32_t f) const {
-    if (f >= f_buckets_.size()) return INF_COST;
-    return f_buckets_[f].h_min;
+    if (f < f_offset_) return INF_COST;
+    uint32_t f_idx = f - f_offset_;
+    if (f_idx >= f_buckets_.size()) return INF_COST;
+    return f_buckets_[f_idx].h_min;
   }
 
   uint32_t peek_top_node(uint32_t f, uint32_t h) const {
-    if (f >= f_buckets_.size() || h >= f_buckets_[f].h_buckets.size()) {  
+    if (f < f_offset_) return NODE_NULL;
+    uint32_t f_idx = f - f_offset_;
+    if (f_idx >= f_buckets_.size() || h >= f_buckets_[f_idx].h_buckets.size()) {  
       return NODE_NULL;
     }
 
-    const auto& s_bucket = f_buckets_[f].h_buckets[h];
+    const auto& s_bucket = f_buckets_[f_idx].h_buckets[h];
     if (s_bucket.empty()) return NODE_NULL;
 
     return s_bucket.head->elements[s_bucket.top - 1];
   }
 
   void set_f_min(uint32_t f) {
-    f_min_ = f;
+    if (f < f_offset_) f_min_idx_ = 0;
+    else f_min_idx_ = f - f_offset_;
   }
 
   uint32_t get_f_min() const {
-    while (f_min_ < f_buckets_.size() && f_buckets_[f_min_].count == 0) {
-      f_min_++;
+    while (f_min_idx_ < f_buckets_.size() && f_buckets_[f_min_idx_].count == 0) {
+      f_min_idx_++;
     }
-    return f_min_;
+    if (f_min_idx_ >= f_buckets_.size()) return f_offset_ + f_buckets_.size();
+    return f_offset_ + f_min_idx_;
   }
 
   uint32_t get_alpha() const { return 1; }
@@ -196,7 +219,8 @@ public:
 
   void clear() {
     f_buckets_.clear();
-    f_min_ = INF_COST;
+    f_offset_ = 0;
+    f_min_idx_ = INF_COST;
     count_ = 0;
     pool_.clear();
   }
@@ -205,20 +229,21 @@ public:
   utils::QueueDetailedMetrics get_detailed_metrics(Validator&& is_stale) const {
     utils::QueueDetailedMetrics m;
     m.primary_buckets_total = f_buckets_.size();
-    m.f_min = f_min_;
-    m.f_max = 0;
+    m.f_min = get_f_min();
+    m.f_max = f_offset_ + f_buckets_.size() - 1;
 
     std::vector<uint32_t> h_mins;
     std::vector<uint32_t> h_maxs;
     std::vector<double> sec_per_pri_vals;
     std::vector<size_t> nodes_per_sec_vals;
 
-    for (uint32_t f = 0; f < f_buckets_.size(); ++f) {
-      const auto& p_bucket = f_buckets_[f];
+    for (uint32_t f_idx = 0; f_idx < f_buckets_.size(); ++f_idx) {
+      const auto& p_bucket = f_buckets_[f_idx];
+      uint32_t f_val = f_offset_ + f_idx;
       if (p_bucket.count == 0) continue;
 
       m.primary_buckets_nonempty++;
-      m.f_max = f;
+      m.f_max = f_val;
       m.secondary_buckets_total += p_bucket.h_buckets.size();
 
       uint32_t local_h_min = INF_COST;
@@ -241,7 +266,7 @@ public:
         uint32_t top = s_bucket.top;
         while (curr) {
           for (uint32_t i = 0; i < top; ++i) {
-            if (!is_stale(curr->elements[i], f, h)) {
+            if (!is_stale(curr->elements[i], f_val, h)) {
               logical_node_count++;
             }
           }
@@ -334,7 +359,8 @@ private:
   }
 
   std::vector<PrimaryBucket> f_buckets_;
-  mutable uint32_t f_min_;
+  uint32_t f_offset_;
+  mutable uint32_t f_min_idx_;
   size_t count_;
   BlockPool pool_;
 };
