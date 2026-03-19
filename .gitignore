@@ -4,3 +4,8 @@ csv/
 aggregated_csvs/
 final_csv/
 metrics/
+DIMACS/
+png/
+example_code/
+maps/
+means_csv/

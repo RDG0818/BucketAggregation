@@ -13,7 +13,7 @@ endif()
 if(MSVC)
     add_compile_options(/O2 /Oi /Ot)
 else()
-    add_compile_options(-O3 -march=native -flto)
+    add_compile_options(-O3 -march=native -flto -g -fno-omit-frame-pointer)
 endif()
 
 add_subdirectory(external/cxxopts)
@@ -25,6 +25,7 @@ src/grid_environment.cpp
 src/pancake_environment.cpp 
 src/sliding_tile_environment.cpp 
 src/msa_environment.cpp
+src/dimacs_environment.cpp
 )
 add_library(core_lib ${SRC_FILES})
 

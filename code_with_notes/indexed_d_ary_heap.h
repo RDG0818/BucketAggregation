@@ -96,11 +96,6 @@ public:
   bool empty() const { return heap_.empty(); }
   void clear() { heap_.clear(); id_to_index_.clear(); }
 
-  uint32_t get_f_min() const { return INF_COST; }
-  uint32_t get_f_min_raw() const { return INF_COST; }
-  uint32_t get_alpha() const { return 1; }
-  uint32_t get_beta() const { return 1; }
-
 private:
   struct HeapItem {
     PriorityType priority;

@@ -16,6 +16,8 @@
 #include <unistd.h>
 #endif
 
+#include "environments/node.h"
+
 namespace utils {
 
 struct QueueDetailedMetrics {
@@ -71,6 +73,9 @@ struct SearchStats {
   uint64_t count_stale_pops = 0;
   uint64_t count_update_pushes = 0;
 
+  uint64_t total_hmin_scans = 0;
+  uint64_t total_secondary_bucket_allocs = 0;
+
   double total_time_ms = 0;
   uint64_t nodes_expanded = 0;
   uint64_t nodes_generated = 0;
@@ -120,6 +125,24 @@ struct has_get_detailed_metrics : std::false_type {};
 template<typename Q>
 struct has_get_detailed_metrics<Q, std::void_t<decltype(std::declval<Q>().get_detailed_metrics())>> : std::true_type {};
 
+template<typename Q, typename = std::void_t<>>
+struct has_get_hmin_scans : std::false_type {};
+
+template<typename Q>
+struct has_get_hmin_scans<Q, std::void_t<decltype(std::declval<Q>().get_hmin_scans())>> : std::true_type {};
+
+template<typename Q, typename = std::void_t<>>
+struct has_get_secondary_bucket_allocs : std::false_type {};
+
+template<typename Q>
+struct has_get_secondary_bucket_allocs<Q, std::void_t<decltype(std::declval<Q>().get_secondary_bucket_allocs())>> : std::true_type {};
+
+template<typename Q, typename = std::void_t<>>
+struct has_get_f_min_raw : std::false_type {};
+
+template<typename Q>
+struct has_get_f_min_raw<Q, std::void_t<decltype(std::declval<Q>().get_f_min_raw())>> : std::true_type {};
+
 template<typename Q, typename V, typename = std::void_t<>>
 struct has_get_detailed_metrics_v : std::false_type {};
 
@@ -168,6 +191,13 @@ public:
     auto end = std::chrono::steady_clock::now();
     stats_.time_dequeue += std::chrono::duration<double, std::nano>(end - start).count();
     stats_.count_dequeue++;
+
+    if constexpr (has_get_hmin_scans<QueueType>::value) {
+      stats_.total_hmin_scans = queue_.get_hmin_scans();
+    }
+    if constexpr (has_get_secondary_bucket_allocs<QueueType>::value) {
+      stats_.total_secondary_bucket_allocs = queue_.get_secondary_bucket_allocs();
+    }
     return handle;
   }
 
@@ -178,7 +208,12 @@ public:
   bool contains(uint32_t id) const { return queue_.contains(id); }
   
   uint32_t get_f_min() const { return queue_.get_f_min(); }
-  uint32_t get_f_min_raw() const { return queue_.get_f_min_raw(); }
+  uint32_t get_f_min_raw() const { 
+    if constexpr (has_get_f_min_raw<QueueType>::value) {
+      return queue_.get_f_min_raw(); 
+    }
+    return INF_COST;
+  }
   uint32_t get_alpha() const { return queue_.get_alpha(); }
   uint32_t get_beta() const { return queue_.get_beta(); }
   
@@ -188,6 +223,13 @@ public:
     auto end = std::chrono::steady_clock::now();
     stats_.time_dequeue += std::chrono::duration<double, std::nano>(end - start).count();
     stats_.count_dequeue++;
+
+    if constexpr (has_get_hmin_scans<QueueType>::value) {
+      stats_.total_hmin_scans = queue_.get_hmin_scans();
+    }
+    if constexpr (has_get_secondary_bucket_allocs<QueueType>::value) {
+      stats_.total_secondary_bucket_allocs = queue_.get_secondary_bucket_allocs();
+    }
     return handle; 
   }
   size_t get_node_count(uint32_t f) const { return queue_.get_node_count(f); }
@@ -204,6 +246,13 @@ public:
       auto end = std::chrono::steady_clock::now();
       stats_.time_rebuild += std::chrono::duration<double, std::nano>(end - start).count();
       stats_.count_rebuild++;
+
+      if constexpr (has_get_hmin_scans<QueueType>::value) {
+        stats_.total_hmin_scans = queue_.get_hmin_scans();
+      }
+      if constexpr (has_get_secondary_bucket_allocs<QueueType>::value) {
+        stats_.total_secondary_bucket_allocs = queue_.get_secondary_bucket_allocs();
+      }
     }
   }
 
@@ -216,6 +265,13 @@ public:
       auto end = std::chrono::steady_clock::now();
       stats_.time_rebuild += std::chrono::duration<double, std::nano>(end - start).count();
       stats_.count_rebuild++;
+
+      if constexpr (has_get_hmin_scans<QueueType>::value) {
+        stats_.total_hmin_scans = queue_.get_hmin_scans();
+      }
+      if constexpr (has_get_secondary_bucket_allocs<QueueType>::value) {
+        stats_.total_secondary_bucket_allocs = queue_.get_secondary_bucket_allocs();
+      }
     }
   }
 

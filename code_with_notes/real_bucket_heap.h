@@ -12,6 +12,11 @@ class RealBucketHeap {
 
 public:
 
+  // NOTE: Although it would reduce your flexibility a little, if you move alpha and beta to be
+  // template parameters, it will give the compiler full insight into their values, so it may be able
+  // to better optimize the division operations in push(). Integer division is the slowest CPU operation, and
+  // the compiler will avoid it at all costs - if it knows that it can, which requires knowing the values at
+  // compilation time.
   RealBucketHeap(PriorityCalculator& calculator, uint32_t alpha = 1, uint32_t beta = 1) 
     : calculator_(calculator), alpha_(alpha), beta_(beta) {};
 
@@ -32,6 +37,7 @@ public:
     }
   }
 
+  // NOTE: Mark noexcept
   uint32_t pop() noexcept {
     if (primary_heap_.empty()) return NODE_NULL;
     uint32_t best_f_idx = primary_heap_.top();
@@ -54,15 +60,18 @@ public:
     return node_id;
   }
 
+  // NOTE: Mark noexcept
   bool empty() const noexcept {
     return buckets_.empty();
   }
 
+  // NOTE: Mark noexcept
   void clear() noexcept {
     buckets_.clear();
     primary_heap_.clear();
   }
 
+  // NOTE: Mark noexcept
   void rebuild() noexcept {
     auto update_func = [&](uint32_t f_idx) {
       double f_lower = static_cast<double>(f_idx * beta_);
@@ -73,13 +82,12 @@ public:
     primary_heap_.rebuild(update_func);
   }
 
+  // NOTE: Mark noexcept
+  // I'm assuming this is used to modify some member of the calculator externally, otherwise
+  // I would recommend returning a const reference and marking the function const as well.
   PriorityCalculator& get_calculator() noexcept {
     return calculator_;
   }
-
-  uint64_t get_hmin_scans() const noexcept { return buckets_.get_hmin_scans(); }
-  uint64_t get_secondary_bucket_allocs() const noexcept { return buckets_.get_secondary_bucket_allocs(); }
-  uint32_t get_f_min_raw() const noexcept { return buckets_.get_f_min() * beta_; }
 
   template<typename Validator>
   utils::QueueDetailedMetrics get_detailed_metrics(Validator&& v) const {

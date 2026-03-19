@@ -1,19 +1,18 @@
-// include/queues/log_bucket_heap.h
+// include/queues/bucket_heap.h
 
 #pragma once
 
 #include "environments/node.h"
 #include "queues/indexed_d_ary_heap.h"
-#include "queues/log_bucket_queue.h"
+#include "queues/two_level_bucket_queue.h"
 #include "utils/utils.h"
-#include <bit>
 
 template <typename PriorityCalculator, typename Compare = std::greater<double>, int D = 2>
-class LogBucketHeap {
+class BucketHeap {
 
 public:
 
-  LogBucketHeap(PriorityCalculator& calculator) 
+  BucketHeap(PriorityCalculator& calculator) 
     : calculator_(calculator) {};
 
   void push(uint32_t id, uint32_t f, uint32_t h) {
@@ -22,15 +21,14 @@ public:
 
     buckets_.push(id, f, h);
 
-    uint32_t new_h_min = buckets_.get_h_min(f);
-
-    if (old_count == 0 || new_h_min < old_h_min) {
-      double priority = calculator_(f, new_h_min);
+    if (old_count == 0 || h < old_h_min) {
+      double priority = calculator_(f, h);
       primary_heap_.push(f, priority); // handles decrease-key as well
     }
   }
 
-  uint32_t pop() {
+  // NOTE: Mark noexcept
+  uint32_t pop() noexcept {
     if (primary_heap_.empty()) return NODE_NULL;
     uint32_t best_f = primary_heap_.top();
     uint32_t old_h_min = buckets_.get_h_min(best_f);
@@ -50,16 +48,19 @@ public:
     return node_id;
   }
 
-  bool empty() const {
+  // NOTE: Mark noexcept
+  bool empty() const noexcept {
     return buckets_.empty();
   }
 
-  void clear() {
+  // NOTE: Mark noexcept
+  void clear() noexcept {
     buckets_.clear();
     primary_heap_.clear();
   }
 
-  void rebuild() {
+  // NOTE: Mark noexcept
+  void rebuild() noexcept {
     auto update_func = [&](uint32_t f) {
       uint32_t h_min = buckets_.get_h_min(f);
       return calculator_(f, h_min);
@@ -71,10 +72,6 @@ public:
     return calculator_;
   }
 
-  uint64_t get_hmin_scans() const noexcept { return buckets_.get_hmin_scans(); }
-  uint64_t get_secondary_bucket_allocs() const noexcept { return buckets_.get_secondary_bucket_allocs(); }
-  uint32_t get_f_min_raw() const noexcept { return buckets_.get_f_min(); }
-
   template<typename Validator>
   utils::QueueDetailedMetrics get_detailed_metrics(Validator&& v) const {
     return buckets_.get_detailed_metrics(std::forward<Validator>(v));
@@ -85,9 +82,8 @@ public:
   }
 
 private:
-  static constexpr int LogBaseExponent = (D > 1) ? std::bit_width(static_cast<unsigned int>(D) - 1) : 1;
-  LogBucketQueue<LogBaseExponent> buckets_;
+  TwoLevelBucketQueue buckets_;
   IndexedDaryHeap<double, D, Compare> primary_heap_;
   PriorityCalculator& calculator_;
 
-};
+}; 

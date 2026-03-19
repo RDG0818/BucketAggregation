@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # 1. Load your compiled data
-input_files = ['final_csv/compiled_csv/msa_better.csv']
+input_files = ['last_csv/anastar_random_grid_5.csv']
 for input_file in input_files:
   df = pd.read_csv(input_file)
   df['total_overhead_ms'] = df['total_overhead_ns'] / 1_000_000
@@ -23,7 +23,7 @@ for input_file in input_files:
     'time_dequeue_ns',
     'avg_time_dequeue_ns',
       'total_time_ms', 
-      'time_decrease_key_ns',
+    #  'time_decrease_key_ns',
       'time_rebuild_ns', 
      'wasted_time_ns', 
       'total_overhead_ns',
@@ -41,4 +41,4 @@ for input_file in input_files:
   print("--- Algorithm Performance Means ---")
   print(analysis_df)
 
-  analysis_df.to_csv('final_csv/mean_csv/msa_better_means.csv', index=False)
+  analysis_df.to_csv('final_csv/mean_csv/anastar/anastar_random_grid_5.csv', index=False)

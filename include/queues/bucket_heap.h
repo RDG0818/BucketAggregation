@@ -27,7 +27,7 @@ public:
     }
   }
 
-  uint32_t pop() {
+  uint32_t pop() noexcept {
     if (primary_heap_.empty()) return NODE_NULL;
     uint32_t best_f = primary_heap_.top();
     uint32_t old_h_min = buckets_.get_h_min(best_f);
@@ -47,16 +47,16 @@ public:
     return node_id;
   }
 
-  bool empty() const {
+  bool empty() const noexcept {
     return buckets_.empty();
   }
 
-  void clear() {
+  void clear() noexcept {
     buckets_.clear();
     primary_heap_.clear();
   }
 
-  void rebuild() {
+  void rebuild() noexcept {
     auto update_func = [&](uint32_t f) {
       uint32_t h_min = buckets_.get_h_min(f);
       return calculator_(f, h_min);
@@ -67,6 +67,10 @@ public:
   PriorityCalculator& get_calculator() {
     return calculator_;
   }
+
+  uint64_t get_hmin_scans() const noexcept { return buckets_.get_hmin_scans(); }
+  uint64_t get_secondary_bucket_allocs() const noexcept { return buckets_.get_secondary_bucket_allocs(); }
+  uint32_t get_f_min_raw() const noexcept { return buckets_.get_f_min(); }
 
   template<typename Validator>
   utils::QueueDetailedMetrics get_detailed_metrics(Validator&& v) const {

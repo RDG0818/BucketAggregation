@@ -61,6 +61,9 @@ public:
     auto& p_bucket = f_buckets_[f_idx];
 
     if (h_idx >= p_bucket.h_buckets.size()) {
+      if (p_bucket.h_buckets.capacity() == 0) {
+        secondary_bucket_allocs_++;
+      }
       size_t new_size = std::max<size_t>(h_idx + 1, p_bucket.h_buckets.size() * 1.5);
       p_bucket.h_buckets.resize(new_size);
     }
@@ -123,6 +126,9 @@ public:
 
   uint32_t get_alpha() const { return alpha_; }
   uint32_t get_beta() const { return beta_; }
+
+  uint64_t get_hmin_scans() const noexcept { return hmin_scans_; }
+  uint64_t get_secondary_bucket_allocs() const noexcept { return secondary_bucket_allocs_; }
 
   size_t get_node_count(uint32_t f_idx_raw) const {
     if (f_idx_raw < f_offset_) return 0;
@@ -213,6 +219,8 @@ public:
     f_offset_ = 0;
     f_min_idx_ = INF_COST;
     count_ = 0;
+    hmin_scans_ = 0;
+    secondary_bucket_allocs_ = 0;
     pool_.clear();
   }
 
@@ -224,6 +232,7 @@ private:
     while(p_bucket.h_min < p_bucket.h_buckets.size() &&
           p_bucket.h_buckets[p_bucket.h_min].empty()) {
       p_bucket.h_min++;
+      hmin_scans_++;
     }
 
     if (p_bucket.h_min >= p_bucket.h_buckets.size()) {
@@ -258,6 +267,8 @@ private:
   uint32_t f_offset_;
   mutable uint32_t f_min_idx_;
   size_t count_;
+  uint64_t hmin_scans_ = 0;
+  uint64_t secondary_bucket_allocs_ = 0;
   BlockPool pool_;
   uint32_t alpha_;
   uint32_t beta_;

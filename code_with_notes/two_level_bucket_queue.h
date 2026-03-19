@@ -17,6 +17,14 @@ struct Block {
   Block* next = nullptr;
 };
 
+// NOTE: I didn't realize you were using a block pool in this way. Have you tried just using a vector for
+// the secondary buckets and letting them handle the memory management for you? I only ask because that's
+// what I did, and I'd be curious if you tried that and then switched to this for a particular reason.
+// Thinking about it, I would expect that this strategy actually serves you better in the grid domain by
+// reducing the total number of allocations performed on the sparsely populated secondary buckets. But I
+// also suspect that this approach may *increase* the total number of allocations performed in domains
+// with sufficiently large state spaces that have more densely populated secondary buckets. Thoughts
+// on this?
 class BlockPool {
 
 public:
@@ -27,6 +35,8 @@ public:
       reserve(initial_capacity);
     }
   };
+  // NOTE: Since you're just defaulting this, it's better to omit it entirely.
+  //~BlockPool() = default;
 
   Block* allocate() {
     if (!free_list_) {
@@ -38,6 +48,7 @@ public:
     return block;
   }
 
+  // NOTE: Mark noexcept
   void deallocate(Block* block) noexcept {
     block->next = free_list_;
     free_list_ = block;
@@ -77,6 +88,10 @@ private:
 
 };
 
+// NOTE: Most of my comments here are about marking functions as noexcept. This is a promise to the compiler
+// that the function will never throw an exception, which allows the compiler to optimize the function more
+// aggressively and not include any exception handling. It's good practice to mark functions that can't throw
+// as noexcept. It's possible that this could improve performance some, though it's not guaranteed
 class TwoLevelBucketQueue {
 
 private:
@@ -123,9 +138,6 @@ public:
     auto& p_bucket = f_buckets_[f_idx];
 
     if (h >= p_bucket.h_buckets.size()) {
-      if (p_bucket.h_buckets.capacity() == 0) {
-        secondary_bucket_allocs_++;
-      }
       size_t new_size = std::max<size_t>(h + 1, p_bucket.h_buckets.size() * 1.5);
       p_bucket.h_buckets.resize(new_size);
     }
@@ -148,13 +160,20 @@ public:
     if (f_idx < f_min_idx_) f_min_idx_ = f_idx;
   }
 
+  // NOTE: This won't perform any allocation, so it should be non-throwing. Mark noexcept to have compiler leave out exception handling
+  // for this function. All functions it calls should be marked noexcept as well.
   uint32_t pop() noexcept {
     if (count_ == 0) return INF_COST;
 
-    if (f_min_idx_ < f_buckets_.size() && f_buckets_[f_min_idx_].count == 0) {
-      while (f_min_idx_ < f_buckets_.size() && f_buckets_[f_min_idx_].count == 0) {
-        f_min_idx_++;
-      }
+    // NOTE: Branch predictors are mythical beasts, so I can't say for sure what I'm about to say will be of any use at all, but
+    // I believe that ordinarily for loops it's assumed that the branch will be taken. This is because you normally loop for a while
+    // and only stop at the end, so you'd only have a single missed branch prediction that way. BUT for this case, we assume that the vast
+    // majority of the time this loop should break without ever performing work. So, it's possible that we're all but guaranteeing a
+    // branch misprediction here. So, it's *possible* - though unlikely - that wrapping this loop in an if statement could somewhat
+    // improve the performance of this function by reducing the number of mispredicted branches. But, maybe the branch predictor is
+    // already smart enough to be updating its behavior for this loop anyway, in which case there wouldn't be a change in performance.
+    while (f_min_idx_ < f_buckets_.size() && f_buckets_[f_min_idx_].count == 0) {
+      f_min_idx_++;
     }
 
     if (f_min_idx_ >= f_buckets_.size()) {
@@ -165,6 +184,7 @@ public:
     return pop_from_bucket(f_buckets_[f_min_idx_]);
   }
 
+  // NOTE: noexcept
   uint32_t pop_from(uint32_t f) noexcept {
     if (f < f_offset_) return NODE_NULL;
     uint32_t f_idx = f - f_offset_;
@@ -175,6 +195,7 @@ public:
     return pop_from_bucket(f_buckets_[f_idx]);
   }
 
+  // NOTE: noexcept
   size_t get_node_count(uint32_t f) const noexcept {
     if (f < f_offset_) return 0;
     uint32_t f_idx = f - f_offset_;
@@ -182,6 +203,7 @@ public:
     return f_buckets_[f_idx].count;
   }
 
+  // NOTE: noexcept
   uint32_t get_h_min(uint32_t f) const noexcept {
     if (f < f_offset_) return INF_COST;
     uint32_t f_idx = f - f_offset_;
@@ -189,6 +211,7 @@ public:
     return f_buckets_[f_idx].h_min;
   }
 
+  // NOTE: noexcept
   uint32_t peek_top_node(uint32_t f, uint32_t h) const noexcept {
     if (f < f_offset_) return NODE_NULL;
     uint32_t f_idx = f - f_offset_;
@@ -202,36 +225,34 @@ public:
     return s_bucket.head->elements[s_bucket.top - 1];
   }
 
+  // NOTE: noexcept
   void set_f_min(uint32_t f) noexcept {
     if (f < f_offset_) f_min_idx_ = 0;
     else f_min_idx_ = f - f_offset_;
   }
 
+  // NOTE: noexcept
   uint32_t get_f_min() const noexcept {
-    if (f_min_idx_ < f_buckets_.size() && f_buckets_[f_min_idx_].count == 0) {
-      while (f_min_idx_ < f_buckets_.size() && f_buckets_[f_min_idx_].count == 0) {
-        f_min_idx_++;
-      }
+    while (f_min_idx_ < f_buckets_.size() && f_buckets_[f_min_idx_].count == 0) {
+      f_min_idx_++;
     }
     if (f_min_idx_ >= f_buckets_.size()) return f_offset_ + f_buckets_.size();
     return f_offset_ + f_min_idx_;
   }
 
+  // NOTE: noexcept
   uint32_t get_alpha() const noexcept { return 1; }
   uint32_t get_beta() const noexcept { return 1; }
 
-  uint64_t get_hmin_scans() const noexcept { return hmin_scans_; }
-  uint64_t get_secondary_bucket_allocs() const noexcept { return secondary_bucket_allocs_; }
-
+  // NOTE: noexcept
   bool empty() const noexcept { return count_ == 0; };
 
+  // NOTE: noexcept
   void clear() noexcept {
     f_buckets_.clear();
     f_offset_ = 0;
     f_min_idx_ = INF_COST;
     count_ = 0;
-    hmin_scans_ = 0;
-    secondary_bucket_allocs_ = 0;
     pool_.clear();
   }
 
@@ -334,14 +355,11 @@ public:
 
 private:
 
+  // NOTE: Per previous comment, mark noexcept.
   uint32_t pop_from_bucket(PrimaryBucket& p_bucket) noexcept {
-    if (p_bucket.h_min < p_bucket.h_buckets.size() &&
+    while(p_bucket.h_min < p_bucket.h_buckets.size() &&
           p_bucket.h_buckets[p_bucket.h_min].empty()) {
-      while(p_bucket.h_min < p_bucket.h_buckets.size() &&
-            p_bucket.h_buckets[p_bucket.h_min].empty()) {
-        p_bucket.h_min++;
-        hmin_scans_++;
-      }
+      p_bucket.h_min++;
     }
 
     if (p_bucket.h_min >= p_bucket.h_buckets.size()) {
@@ -363,13 +381,10 @@ private:
     count_--;
 
     if (p_bucket.count > 0 && s_bucket.empty()) {
-      if (p_bucket.h_min < p_bucket.h_buckets.size() &&
+      while (p_bucket.h_min < p_bucket.h_buckets.size() &&
              p_bucket.h_buckets[p_bucket.h_min].empty()) {
-        while (p_bucket.h_min < p_bucket.h_buckets.size() &&
-               p_bucket.h_buckets[p_bucket.h_min].empty()) {
-          p_bucket.h_min++;
-        };
-      }
+        p_bucket.h_min++;
+      };
     }
 
     return id;
@@ -379,7 +394,5 @@ private:
   uint32_t f_offset_;
   mutable uint32_t f_min_idx_;
   size_t count_;
-  uint64_t hmin_scans_ = 0;
-  uint64_t secondary_bucket_allocs_ = 0;
   BlockPool pool_;
 };

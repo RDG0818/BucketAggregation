@@ -208,6 +208,9 @@ public:
     return f_offset_ + f_min_idx_;
   }
 
+  uint64_t get_hmin_scans() const noexcept { return hmin_scans_; }
+  uint64_t get_secondary_bucket_allocs() const noexcept { return 0; }
+
   bool empty() const { return count_ == 0; };
 
   template <typename Validator>
@@ -314,6 +317,7 @@ public:
     f_offset_ = 0;
     f_min_idx_ = INF_COST;
     count_ = 0;
+    hmin_scans_ = 0;
     pool_.clear();
   }
 
@@ -325,6 +329,7 @@ private:
     while(p_bucket.h_log_min < p_bucket.h_buckets.size() &&
           p_bucket.h_buckets[p_bucket.h_log_min].empty()) {
       p_bucket.h_log_min++;
+      hmin_scans_++;
     }
 
     if (p_bucket.h_log_min >= p_bucket.h_buckets.size()) {
@@ -359,5 +364,6 @@ private:
   uint32_t f_offset_;
   mutable uint32_t f_min_idx_;
   size_t count_;
+  uint64_t hmin_scans_ = 0;
   LogBlockPool pool_;
 };
