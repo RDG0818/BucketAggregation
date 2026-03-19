@@ -2,8 +2,8 @@ import pandas as pd
 import glob
 
 # 1. Setup paths and find all files matching the pattern
-input_pattern = 'last_csv/anastar_random_grid_*.csv'
-output_file = 'last_csv/anastar_random_grid_5.csv'
+input_pattern = 'extra_grid/extra_grid_csv/*.csv'
+output_file = 'extra_grid/grid_data.csv'
 files = glob.glob(input_pattern)
 
 # List to hold the dataframes

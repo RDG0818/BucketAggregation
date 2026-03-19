@@ -351,6 +351,28 @@ void execute_benchmarks(
                 default:
                     if (!is_file_output) std::cerr << "Unsupported D value for BucketHeap: " << d_ary << std::endl;
             }
+        } else if (algo_name == "dps_realbucket") {
+            DPSPriorityCalculator calculator;
+            std::string desc = "DPS with RealBucketHeap (a=" + std::to_string(alpha) + ", b=" + std::to_string(beta) + ", D=" + std::to_string(d_ary) + ")";
+            switch (d_ary) {
+                case 2: {
+                    RealBucketHeap<DPSPriorityCalculator, std::less<double>, 2> real_bucket_heap(calculator, alpha, beta);
+                    process_result(run_benchmark<DynamicPotentialSearch>(env, real_bucket_heap, desc, !is_file_output, collect_metrics));
+                    break;
+                }
+                case 4: {
+                    RealBucketHeap<DPSPriorityCalculator, std::less<double>, 4> real_bucket_heap(calculator, alpha, beta);
+                    process_result(run_benchmark<DynamicPotentialSearch>(env, real_bucket_heap, desc, !is_file_output, collect_metrics));
+                    break;
+                }
+                case 8: {
+                    RealBucketHeap<DPSPriorityCalculator, std::less<double>, 8> real_bucket_heap(calculator, alpha, beta);
+                    process_result(run_benchmark<DynamicPotentialSearch>(env, real_bucket_heap, desc, !is_file_output, collect_metrics));
+                    break;
+                }
+                default:
+                    if (!is_file_output) std::cerr << "Unsupported D value for RealBucketHeap: " << d_ary << std::endl;
+            }
         }  else if (algo_name == "anastar_logbucket") {
             ANAStarPriorityCalculator calculator;
             std::string desc = "ANA* with LogBucketHeap (D=" + std::to_string(d_ary) + ")";
@@ -509,7 +531,7 @@ int main(int argc, char** argv) {
     std::vector<std::string> algorithms_to_run;
     std::string algo_str = result["algorithms"].as<std::string>();
     if (algo_str == "all") {
-        algorithms_to_run = {"astar_binary", "astar_bucket", "anytime_astar_binary", "anastar_binary", "anastar_bucket", "anastar_logbucket", "anastar_realbucket", "astar_agg_two_level", "dps_binary", "dps_bucket"};
+        algorithms_to_run = {"astar_binary", "astar_bucket", "anytime_astar_binary", "anastar_binary", "anastar_bucket", "anastar_logbucket", "anastar_realbucket", "astar_agg_two_level", "dps_binary", "dps_bucket", "dps_realbucket"};
     } else {
         algorithms_to_run = parse_list<std::string>(algo_str);
     }
@@ -518,7 +540,7 @@ int main(int argc, char** argv) {
     std::vector<std::string> d_sweep_algos;
     std::vector<std::string> full_sweep_algos;
     for(const auto& algo : algorithms_to_run) {
-        if (algo == "anastar_realbucket" || algo == "astar_agg_two_level" || algo == "focal_bucket") {
+        if (algo == "anastar_realbucket" || algo == "astar_agg_two_level" || algo == "focal_bucket" || algo == "dps_realbucket") {
             full_sweep_algos.push_back(algo);
         } else if (algo == "anastar_bucket" || algo == "anastar_logbucket" || algo == "dps_bucket") {
             d_sweep_algos.push_back(algo);

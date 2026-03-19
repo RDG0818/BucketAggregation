@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # 1. Load your compiled data
-input_files = ['last_csv/anastar_random_grid_5.csv']
+input_files = ['extra_grid/grid_data.csv']
 for input_file in input_files:
   df = pd.read_csv(input_file)
   df['total_overhead_ms'] = df['total_overhead_ns'] / 1_000_000
@@ -41,4 +41,4 @@ for input_file in input_files:
   print("--- Algorithm Performance Means ---")
   print(analysis_df)
 
-  analysis_df.to_csv('final_csv/mean_csv/anastar/anastar_random_grid_5.csv', index=False)
+  analysis_df.to_csv('final_csv/mean_csv/grid_data.csv', index=False)
