@@ -112,8 +112,8 @@ def plot_results(all_env_data, output_filename, is_astar=False):
     legend_elements = [Patch(facecolor=colors[comp], edgecolor='black', hatch=hatches[comp], label=label) 
                        for comp, label in zip(components, component_labels)]
     
-    # Place legend in the upper right corner of the rightmost subplot
-    axes[-1].legend(handles=legend_elements, loc='upper right', 
+    # Place legend in the upper right corner of the leftmost subplot
+    axes[0].legend(handles=legend_elements, loc='upper right', 
                    fontsize=14, ncol=1, frameon=True, facecolor='white', framealpha=0.8)
 
     fig.tight_layout()

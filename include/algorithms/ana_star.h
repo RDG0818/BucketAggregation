@@ -33,7 +33,7 @@ template <typename E, typename PQ>
 class ANAStar {
 
 public:
-  ANAStar(E& env, PQ& priority_queue, utils::SearchStats* stats = nullptr, bool collect_metrics = false) 
+  ANAStar(E& env, PQ& priority_queue, utils::SearchStats* stats = nullptr, bool collect_metrics = false, double weight = 1.0) 
     : env_(env), priority_queue_(priority_queue), stats_(stats), collect_metrics_(collect_metrics), G_upper_(std::numeric_limits<double>::max()) {
       if constexpr (is_bucket_heap<PQ>::value) {
         priority_queue_.get_calculator().set_g_upper(G_upper_);

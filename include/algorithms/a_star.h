@@ -15,7 +15,7 @@ class AStar {
 
 public:
 
-  AStar(E& env, PQ& priority_queue, utils::SearchStats* stats = nullptr, bool collect_metrics = false) 
+  AStar(E& env, PQ& priority_queue, utils::SearchStats* stats = nullptr, bool collect_metrics = false, double weight = 1.0) 
     : env_(env), priority_queue_(priority_queue), stats_(stats), collect_metrics_(collect_metrics) {
       if (collect_metrics_) {
         metrics_out_.open("bucket_metrics.csv", std::ios::trunc);

@@ -170,7 +170,7 @@ struct DPSPriorityCalculator {
 
 // Main benchmark runner
 template <template<typename, typename> class Algorithm, typename Environment, typename Queue>
-BenchmarkResult run_benchmark(Environment& env, Queue& queue, const std::string& description, bool show_spinner, bool collect_metrics) {
+BenchmarkResult run_benchmark(Environment& env, Queue& queue, const std::string& description, bool show_spinner, bool collect_metrics, double weight = 1.5) {
     utils::SearchStats stats;
     env.reset_search();
     queue.clear();
@@ -179,7 +179,7 @@ BenchmarkResult run_benchmark(Environment& env, Queue& queue, const std::string&
     ProfiledQueueType profiled_queue(queue, stats);
 
     using Solver = Algorithm<Environment, ProfiledQueueType>;
-    Solver solver(env, profiled_queue, &stats, collect_metrics);
+    Solver solver(env, profiled_queue, &stats, collect_metrics, weight);
 
     std::atomic<bool> done(false);
     std::thread loading_thread;
@@ -260,13 +260,13 @@ void execute_benchmarks(
             process_result(run_benchmark<AStar>(env, queue, "A* with BucketQueue", !is_file_output, collect_metrics));
         } else if (algo_name == "anytime_astar_binary") {
             IndexedDaryHeap<uint32_t, 2> heap;
-            process_result(run_benchmark<AnytimeAStar>(env, heap, "Anytime A* with IndexedHeap (D=2)", !is_file_output, collect_metrics));
+            process_result(run_benchmark<AnytimeAStar>(env, heap, "Anytime A* with IndexedHeap (D=2)", !is_file_output, collect_metrics, focal_w));
         } else if (algo_name == "anastar_binary") {
             IndexedDaryHeap<double, 2, std::less<double>> heap;
             process_result(run_benchmark<ANAStar>(env, heap, "ANA* with IndexedHeap (D=2)", !is_file_output, collect_metrics));
         } else if (algo_name == "dps_binary") {
             IndexedDaryHeap<double, 2, std::less<double>> heap;
-            process_result(run_benchmark<DynamicPotentialSearch>(env, heap, "DPS with IndexedHeap (D=2)", !is_file_output, collect_metrics));
+            process_result(run_benchmark<DynamicPotentialSearch>(env, heap, "DPS with IndexedHeap (D=2)", !is_file_output, collect_metrics, focal_w));
         } else if (algo_name == "focal_binary") {
             IndexedDaryHeap<uint32_t, 2, std::greater<uint32_t>> open_pq;
             IndexedDaryHeap<uint32_t, 2, std::greater<uint32_t>> focal_pq;
@@ -335,17 +335,17 @@ void execute_benchmarks(
             switch (d_ary) {
                 case 2: {
                     BucketHeap<DPSPriorityCalculator, std::less<double>, 2> bucket_heap(calculator);
-                    process_result(run_benchmark<DynamicPotentialSearch>(env, bucket_heap, desc, !is_file_output, collect_metrics));
+                    process_result(run_benchmark<DynamicPotentialSearch>(env, bucket_heap, desc, !is_file_output, collect_metrics, focal_w));
                     break;
                 }
                 case 4: {
                     BucketHeap<DPSPriorityCalculator, std::less<double>, 4> bucket_heap(calculator);
-                    process_result(run_benchmark<DynamicPotentialSearch>(env, bucket_heap, desc, !is_file_output, collect_metrics));
+                    process_result(run_benchmark<DynamicPotentialSearch>(env, bucket_heap, desc, !is_file_output, collect_metrics, focal_w));
                     break;
                 }
                 case 8: {
                     BucketHeap<DPSPriorityCalculator, std::less<double>, 8> bucket_heap(calculator);
-                    process_result(run_benchmark<DynamicPotentialSearch>(env, bucket_heap, desc, !is_file_output, collect_metrics));
+                    process_result(run_benchmark<DynamicPotentialSearch>(env, bucket_heap, desc, !is_file_output, collect_metrics, focal_w));
                     break;
                 }
                 default:
@@ -357,17 +357,17 @@ void execute_benchmarks(
             switch (d_ary) {
                 case 2: {
                     RealBucketHeap<DPSPriorityCalculator, std::less<double>, 2> real_bucket_heap(calculator, alpha, beta);
-                    process_result(run_benchmark<DynamicPotentialSearch>(env, real_bucket_heap, desc, !is_file_output, collect_metrics));
+                    process_result(run_benchmark<DynamicPotentialSearch>(env, real_bucket_heap, desc, !is_file_output, collect_metrics, focal_w));
                     break;
                 }
                 case 4: {
                     RealBucketHeap<DPSPriorityCalculator, std::less<double>, 4> real_bucket_heap(calculator, alpha, beta);
-                    process_result(run_benchmark<DynamicPotentialSearch>(env, real_bucket_heap, desc, !is_file_output, collect_metrics));
+                    process_result(run_benchmark<DynamicPotentialSearch>(env, real_bucket_heap, desc, !is_file_output, collect_metrics, focal_w));
                     break;
                 }
                 case 8: {
                     RealBucketHeap<DPSPriorityCalculator, std::less<double>, 8> real_bucket_heap(calculator, alpha, beta);
-                    process_result(run_benchmark<DynamicPotentialSearch>(env, real_bucket_heap, desc, !is_file_output, collect_metrics));
+                    process_result(run_benchmark<DynamicPotentialSearch>(env, real_bucket_heap, desc, !is_file_output, collect_metrics, focal_w));
                     break;
                 }
                 default:
@@ -799,7 +799,7 @@ int main(int argc, char** argv) {
                 }
                 if (!file_output) out << std::endl;
             }
-        } else if (env_name == "msa") {
+        } else if (env_name == "msa" || env_name == "msa5") {
             if (!file_output) {
                 out << "\n\033[1m" << "Multiple Sequence Alignment (5 of 6 EF-TU/EF-1a Proteins)" 
                         << "\033[0m\n" << std::string(term_width, '=') << "\n";
@@ -831,7 +831,7 @@ int main(int argc, char** argv) {
                     }
                 }
 
-                MSAEnvironment msa_env(current_sequences, 50000000);
+                MSA5Environment msa_env(current_sequences, 50000000);
 
                 if (!once_off_algos.empty()) {
                     execute_benchmarks(msa_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
@@ -858,6 +858,47 @@ int main(int argc, char** argv) {
                 }
                 if (!file_output) out << std::endl;
             }
+        } else if (env_name == "msa6") {
+            if (!file_output) {
+                out << "\n\033[1m" << "Multiple Sequence Alignment (All 6 EF-TU/EF-1a Proteins)" 
+                        << "\033[0m\n" << std::string(term_width, '=') << "\n";
+            }
+
+            const std::vector<std::string> all_sequences = {
+                "MSDEQHQNLAIIGHVDHGKSTLVGRLLYETGSVPEHVIEQHKEEAEEKGKGGFEFAYVMDNLAEERERGVTIDIAHQEFSTDTYDFTIVDCPGHRDFVKNMITGASQADNAVLVVAADGVQPQTQEHVFLARTLGIGELIVAVNKMDLVDYGESEYKQVVEEVKDLLTQVRFDSENAKFIPVSAFEGDNIAEESEHTGWYDGEILLEALNELPAPEPPTDAPLRLPIQDVYTISGIGTVPVGRVETGILNTGDNVSFQPDSVSGEVKTVEMHHEEVPKAEPGDNVGFNVRGVGKDDIRRGDVCGPADDPPSVAETFQAQIVVMQHPSVITEGYTPVFHAHTAQVACTVESIDKKIDPSSGEVAEENPDFIQNGDAAVVTVRPQKPLSIEPSSEIPELGSFAIRDMGQTIAAGKVLGVNER", 
+                "MAKTKPILNVAFIGHVDAGKSTTVGRLLLDGGAIDPQLIVRLRKEAEEKGKAGFEFAYVMDGLKEERERGVTIDVAHKKFPPAKYEVTIVDCPGHRDFIKNMITGASQADAAVLVVNVDDAKSGIQPQTREHVFLIRTLGVRQLAVAVNKMDTVNFSEADYNELKKMIGDQLLKMIGFNPEQINFVPVASLHGDNVFKKSERNPWYKGPTIAEVIDGFQPPEKPTNLPLRLPIQDVYTITGVGTVPVGRVETGIIKPGDKVVFEGAGEIKTVEMHHEQLPSAEPGDNIGFNVRGVGKKDIKRGDVLGHTTNPPTVATDFTAQIVVLQHPSVLTDGYTPVFHTHTAQIACTFAEIQKKLNPATGEVLEENPDFLKAGDAAIVKLIPTKPMVIESVKEIPQLGRFAIRDMGMTVAAGMAIQVTAKNK", 
+                "MASQKPHLNLITIGHVDHGKSTLVGRLLYEHGEIPAHIIEEYRKEAEQKGKATFEFAWVMDRFKEERERGVTIDLAHRKFETDKYYFTLIDAPGHRDFVKNMITGTSQADAAILVISARDGEGVMEQTREHAFLARTLGVPQMVVAINKMDATSPPYSEKRYNEVKADAEKLLRSIGFKDISFVPISGYKGDNVTKPSPNMPWYKGPTLLQALDAFKVPEKPINKPLRIPVEDVYSITGIGTVPVGRVETGVLKPGDKVIFLPADKQGDVKSIEMHHEPLQQAEPGDNIGFNVRGIAKNDIKRGDVCGHLDTPPTVVKAFTAQIIVLNHPSVIAPGYKPVFHVHTAQVACRIDEIVKTLNPKDGTTLEKPDFIKNGDVAIVKVIPDKPLVIEKVSEIPQLGRFAVLDMGQTVAAGQCIDLEKR", 
+                "MAKEKPHINIVFIGHVDHGKSTTIGRLLFDTANIPENIIKKFEEMGEKGKSFKFAWVMDRLKEERERGITIDVAHTKFETPHRYITIIDAPGHRDFVKNMITGASQADAAVLVVAVTDGVMPQTKEHAFLARTLGINNILVAVNKMDMVNYDEKKFKAVAEQVKKLLMMLGYKNFPIIPISAWEGDNVVKKSDKMPWYNGPTLIEALDQMPEPPKPTDKPLRIPIQDVYSIKGVGTVPVGRVETGVLRVGDVVIFEPASTIFHKPIQGEVKSIEMHHEPMQEALPGDNIGFNVRGVGKNDIKRGDVAGHTNNPPTVVRPKDTFKAQIIVLNHPTAITVGYTPVLHAHTLQVAVRFEQLLAKLDPRTGNIVEENPQFIKTGDSAIVVLRPTKPMVIEPVKEIPQMGRFAIRDMGQTVAAGMVISIQKAE", 
+                "MSQKPHLNLIVIGHVDHGKSTLIGRLLMDRGFIDEKTVKEAEEAAKKLGKDSEKYAFLMDRLKEERERGVTINLSFMRFETRKYFFTVIDAPGHRDFVKNMITGASQADAAILVVSAKKGEYEAGMSAEGQTREHIILSKTMGINQVIVAINKMDLADTPYDEKRFKEIVDTVSKFMKSFGFDMNKVKFVPVVAPDGDNVTHKSTKMPWYNGPTLEELLDQLEIPPKPVDKPLRIPIQEVYSISGVGVVPVGRIESGVLKVGDKIVFMPVGKIGEVRSIETHHTKIDKAEPGDNIGFNVRGVEKKDVKRGDVAGSVQNPPTVADEFTAQVIVIWHPTAVGVGYTPVLHVHTASIACRVSEITSRIDPKTGKEAEKNPQFIKAGDSAIVKFKPIKELVAEKFREFPALGRFAMRDMGKTVGVGVIIDVKPRKVEVK", 
+                "MPKEKTHINIVVIGHVDSGKSTTTGHLIYKCGGIDQRTIEKFEKESAEMGKGSFKYAWVLDNLKAERERGITIDISLWKFETSKYYFTIIDAPGHRDFIKNMITGTSQADVAILIVAAGTGEFEAGISKNGQTREHILLSYTLGVKQMIVGVNKMDAIQYKQERYEEIKKEISAFLKKTGYNPDKIPFVPISGFQGDNMIEPSTNMPWYKGPTLIGALDSVTPPERPVDKPLRLPLQDVYKISGIGTVPVGRVETGILKPGTIVQFAPSGVSSECKSIEMHHTALAQAIPGDNVGFNVRNLTVKDIKRGNVASDAKNQPAVGCEDFTAQVIVMNHPGQIRKGYTPVLDCHTSHIACKFEELLSKIDRRTGKSMEGGEPEYIKNGDSALVKIVPTKPLCVEEFAKFPPLGRFAVRDMKQTVAVGVVKAVTP"
+            };
+
+            MSA6Environment msa_env(all_sequences, 50000000);
+
+            if (!once_off_algos.empty()) {
+                execute_benchmarks(msa_env, once_off_algos, 0, 0, 0, out, file_output, env_name, 0, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+            }
+
+            if (!d_sweep_algos.empty()) {
+                auto ds = parse_list<int>(result["msa-ds"].as<std::string>());
+                for (int d : ds) {
+                    execute_benchmarks(msa_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, 0, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                }
+            }
+
+            if (!full_sweep_algos.empty()) {
+                auto alphas = parse_list<uint32_t>(result["msa-alphas"].as<std::string>());
+                auto betas = parse_list<uint32_t>(result["msa-betas"].as<std::string>());
+                auto ds = parse_list<int>(result["msa-ds"].as<std::string>());
+                for (int d : ds) {
+                    for (uint32_t alpha : alphas) {
+                        for (uint32_t beta : betas) {
+                            execute_benchmarks(msa_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, 0, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                        }
+                    }
+                }
+            }
+            if (!file_output) out << std::endl;
         } else if (env_name == "dimacs") {
             if (!file_output) {
                 out << "\n\033[1m" << "DIMACS Road Network Environment" 
