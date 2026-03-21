@@ -8,13 +8,14 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+#include <set>
 #include "environments/node.h"
 #include "utils/utils.h"
 #include "queues/bucket_heap.h"
 #include "queues/real_bucket_heap.h"
 #include "queues/log_bucket_heap.h"
 
-// Reuse the bucket heap detection from ANA* context or define it here
+// Trait to detect bucket heaps
 template<typename T>
 struct is_bucket_heap_dps : std::false_type {};
 
@@ -30,11 +31,12 @@ struct is_bucket_heap_dps<LogBucketHeap<PC, C, D>> : std::true_type {};
 template<typename Q>
 struct is_bucket_heap_dps<utils::ProfiledQueue<Q>> : is_bucket_heap_dps<Q> {};
 
+// Trait to detect native f_min support
 template<typename Q, typename = std::void_t<>>
-struct has_get_f_min_raw_dps : std::false_type {};
+struct has_native_fmin : std::false_type {};
 
 template<typename Q>
-struct has_get_f_min_raw_dps<Q, std::void_t<decltype(std::declval<Q>().get_f_min_raw())>> : std::true_type {};
+struct has_native_fmin<Q, std::void_t<decltype(std::declval<Q>().get_f_min_raw())>> : std::true_type {};
 
 template <typename E, typename PQ>
 class DynamicPotentialSearch {
@@ -61,9 +63,14 @@ public:
     uint32_t start_h = env_.get_heuristic(start_node);
     pool.set_g(start_node, 0);
 
-    // Initial f_min is start_h
     last_f_min_ = static_cast<double>(start_h);
-    update_calculator_fmin(last_f_min_);
+    update_calculator_params(last_f_min_);
+
+    // Initialize manual tracker if needed
+    if constexpr (!has_native_fmin<PQ>::value) {
+        f_tracker_.clear();
+        f_tracker_.insert(start_h);
+    }
 
     if constexpr (is_bucket_heap_dps<PQ>::value) {
       priority_queue_.push(start_node, start_h, start_h);
@@ -74,18 +81,20 @@ public:
     std::vector<uint32_t> neighbors;
     neighbors.reserve(16);
 
-    uint64_t expansions_count = 0;
-
     while (!priority_queue_.empty()) {
-      // 1. Check for f_min increase to trigger rebuild
+      // 1. Get current f_min
       double current_f_min = last_f_min_;
-      if constexpr (has_get_f_min_raw_dps<PQ>::value) {
-          current_f_min = static_cast<double>(priority_queue_.get_f_min_raw());
+      if constexpr (has_native_fmin<PQ>::value) {
+          uint32_t raw_f = priority_queue_.get_f_min_raw();
+          if (raw_f != INF_COST) current_f_min = static_cast<double>(raw_f);
+      } else {
+          if (!f_tracker_.empty()) current_f_min = static_cast<double>(*f_tracker_.begin());
       }
 
+      // 2. Trigger rebuild on f_min increase
       if (current_f_min > last_f_min_) {
           last_f_min_ = current_f_min;
-          update_calculator_fmin(last_f_min_);
+          update_calculator_params(last_f_min_);
           
           if constexpr (is_bucket_heap_dps<PQ>::value) {
               priority_queue_.rebuild();
@@ -103,9 +112,15 @@ public:
         if (stats_) stats_->count_stale_pops++;
         continue;
       }
-      pool.mark_closed(u);
 
-      expansions_count++;
+      // Remove from manual tracker on expansion
+      if constexpr (!has_native_fmin<PQ>::value) {
+          uint32_t u_f = pool.get_g(u) + env_.get_heuristic(u);
+          auto it = f_tracker_.find(u_f);
+          if (it != f_tracker_.end()) f_tracker_.erase(it);
+      }
+
+      pool.mark_closed(u);
       if (stats_) stats_->nodes_expanded++;
 
       if (env_.is_goal(u)) {
@@ -120,9 +135,21 @@ public:
         uint32_t cost = env_.get_edge_cost(u, v);
         uint32_t new_g = u_g + cost;
         uint32_t v_h = env_.get_heuristic(v);
+        uint32_t new_f = new_g + v_h;
 
-        if (new_g < pool.get_g(v)) {
-          if (stats_ && pool.get_g(v) != NODE_NULL) {
+        uint32_t old_g = pool.get_g(v);
+        if (new_g < old_g) {
+          
+          // Handle manual f_min tracking for baseline
+          if constexpr (!has_native_fmin<PQ>::value) {
+              if (old_g != INF_COST) {
+                  auto it = f_tracker_.find(old_g + v_h);
+                  if (it != f_tracker_.end()) f_tracker_.erase(it);
+              }
+              f_tracker_.insert(new_f);
+          }
+
+          if (stats_ && old_g != NODE_NULL) {
             stats_->count_update_pushes++;
           }
           pool.set_g(v, new_g);
@@ -142,7 +169,7 @@ public:
 
 private:
 
-  void update_calculator_fmin(double f_min) {
+  void update_calculator_params(double f_min) {
       if constexpr (is_bucket_heap_dps<PQ>::value) {
           priority_queue_.get_calculator().set_f_min(f_min);
           priority_queue_.get_calculator().set_epsilon(epsilon_);
@@ -162,6 +189,7 @@ private:
   bool collect_metrics_;
   double epsilon_;
   double last_f_min_;
+  std::multiset<uint32_t> f_tracker_; // Only used if !has_native_fmin
   std::ofstream metrics_out_;
 
 };
