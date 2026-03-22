@@ -107,9 +107,11 @@ private:
 public:
 
   LogBucketQueue(uint32_t f_cap_hint = 1024) 
-  : f_offset_(0), f_min_idx_(INF_COST), count_(0), pool_(1000, 1000) {
+  : f_offset_(0), f_min_idx_(INF_COST), count_(0), pool_(1000, 1000), use_h_max_(false) {
     f_buckets_.reserve(f_cap_hint);
   }
+
+  void set_use_h_max(bool val) { use_h_max_ = val; }
 
   void push(uint32_t id, uint32_t f, uint32_t h) {
     if (count_ == 0) {
@@ -194,10 +196,17 @@ public:
     if (f_idx >= f_buckets_.size() || f_buckets_[f_idx].count == 0) return INF_COST;
     const auto& p_bucket = f_buckets_[f_idx];
     uint32_t h_log_min = p_bucket.h_log_min;
-    if (h_log_min == 0) return 0;
-    uint32_t power = h_log_min * LogBaseExponent;
-    if (power > 31) return INF_COST; 
-    return 1 << power;
+    
+    if (use_h_max_) {
+        uint32_t power = (h_log_min + 1) * LogBaseExponent;
+        if (power > 31) return INF_COST;
+        return (1 << power) - 1;
+    } else {
+        if (h_log_min == 0) return 0;
+        uint32_t power = h_log_min * LogBaseExponent;
+        if (power > 31) return INF_COST; 
+        return 1 << power;
+    }
   }
 
   uint32_t get_f_min() const {
@@ -366,4 +375,5 @@ private:
   size_t count_;
   uint64_t hmin_scans_ = 0;
   LogBlockPool pool_;
+  bool use_h_max_;
 };

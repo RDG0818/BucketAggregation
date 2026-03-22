@@ -13,7 +13,9 @@ class RealBucketHeap {
 public:
 
   RealBucketHeap(PriorityCalculator& calculator, uint32_t alpha = 1, uint32_t beta = 1) 
-    : calculator_(calculator), alpha_(alpha), beta_(beta) {};
+    : calculator_(calculator), alpha_(alpha), beta_(beta), use_h_max_(false) {};
+
+  void set_use_h_max(bool val) { use_h_max_ = val; }
 
   void push(uint32_t id, uint32_t f, uint32_t h) {
 
@@ -26,8 +28,8 @@ public:
 
     if (old_count == 0 || h_idx < old_h_min_idx) {
       double f_lower = static_cast<double>(f_idx * beta_);
-      double h_lower = static_cast<double>(buckets_.get_h_min(f_idx) * alpha_);
-      double priority = calculator_(f_lower, h_lower);
+      double h_rep = get_h_representative(buckets_.get_h_min(f_idx));
+      double priority = calculator_(f_lower, h_rep);
       primary_heap_.push(f_idx, priority); // handles decrease-key as well
     }
   }
@@ -45,8 +47,8 @@ public:
       uint32_t current_h_min_idx = buckets_.get_h_min(best_f_idx);
       if (current_h_min_idx != old_h_min_idx) {
         double f_lower = static_cast<double>(best_f_idx * beta_);
-        double h_lower = static_cast<double>(current_h_min_idx * alpha_);
-        double priority = calculator_(f_lower, h_lower);
+        double h_rep = get_h_representative(current_h_min_idx);
+        double priority = calculator_(f_lower, h_rep);
         primary_heap_.change_priority(best_f_idx, priority);
       }
     }
@@ -66,9 +68,8 @@ public:
   void rebuild() noexcept {
     auto update_func = [&](uint32_t f_idx) {
       double f_lower = static_cast<double>(f_idx * beta_);
-      double h_lower = static_cast<double>(buckets_.get_h_min(f_idx) * alpha_);
-      uint32_t h_min = buckets_.get_h_min(f_idx);
-      return calculator_(f_lower, h_lower);
+      double h_rep = get_h_representative(buckets_.get_h_min(f_idx));
+      return calculator_(f_lower, h_rep);
     };
     primary_heap_.rebuild(update_func);
   }
@@ -105,10 +106,19 @@ public:
   }
 
 private:
+  double get_h_representative(uint32_t h_idx) const {
+    if (use_h_max_) {
+      return static_cast<double>((h_idx + 1) * alpha_ - 1);
+    } else {
+      return static_cast<double>(h_idx * alpha_);
+    }
+  }
+
   TwoLevelBucketQueue buckets_;
   IndexedDaryHeap<double, D, Compare> primary_heap_;
   PriorityCalculator& calculator_;
   uint32_t alpha_;
   uint32_t beta_;
+  bool use_h_max_;
 
 };

@@ -239,7 +239,8 @@ void execute_benchmarks(
     const std::string& env_name,
     int instance_id,
     bool collect_metrics,
-    double focal_w) 
+    double focal_w,
+    bool use_h_max) 
 {
     auto process_result = [&](BenchmarkResult result) {
         result.environment_name = env_name;
@@ -288,6 +289,7 @@ void execute_benchmarks(
             process_result({"Focal Search (Two Heaps, w=" + std::to_string(focal_w) + ")", stats, env_name, instance_id});
         } else if (algo_name == "focal_bucket") {
             AggregatedTwoLevelBucketQueue buckets(alpha, beta);
+            buckets.set_use_h_max(use_h_max);
             IndexedDaryHeap<uint32_t, 2, std::greater<uint32_t>> focal_heap;
             
             utils::SearchStats stats;
@@ -305,7 +307,7 @@ void execute_benchmarks(
             stats.total_time_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
             stats.memory_peak_kb = utils::get_peak_memory_kb();
             
-            std::string full_desc = "Focal Search (Aggregated Buckets, a=" + std::to_string(alpha) + ", b=" + std::to_string(beta) + ", w=" + std::to_string(focal_w) + ")";
+            std::string full_desc = "Focal Search (Aggregated Buckets, a=" + std::to_string(alpha) + ", b=" + std::to_string(beta) + ", w=" + std::to_string(focal_w) + (use_h_max ? ", use_h_max" : "") + ")";
             process_result({full_desc, stats, env_name, instance_id});
         } else if (algo_name == "anastar_bucket") {
             ANAStarPriorityCalculator calculator;
@@ -353,20 +355,23 @@ void execute_benchmarks(
             }
         } else if (algo_name == "dps_realbucket") {
             DPSPriorityCalculator calculator;
-            std::string desc = "DPS with RealBucketHeap (a=" + std::to_string(alpha) + ", b=" + std::to_string(beta) + ", D=" + std::to_string(d_ary) + ")";
+            std::string desc = "DPS with RealBucketHeap (a=" + std::to_string(alpha) + ", b=" + std::to_string(beta) + ", D=" + std::to_string(d_ary) + (use_h_max ? ", use_h_max" : "") + ")";
             switch (d_ary) {
                 case 2: {
                     RealBucketHeap<DPSPriorityCalculator, std::less<double>, 2> real_bucket_heap(calculator, alpha, beta);
+                    real_bucket_heap.set_use_h_max(use_h_max);
                     process_result(run_benchmark<DynamicPotentialSearch>(env, real_bucket_heap, desc, !is_file_output, collect_metrics, focal_w));
                     break;
                 }
                 case 4: {
                     RealBucketHeap<DPSPriorityCalculator, std::less<double>, 4> real_bucket_heap(calculator, alpha, beta);
+                    real_bucket_heap.set_use_h_max(use_h_max);
                     process_result(run_benchmark<DynamicPotentialSearch>(env, real_bucket_heap, desc, !is_file_output, collect_metrics, focal_w));
                     break;
                 }
                 case 8: {
                     RealBucketHeap<DPSPriorityCalculator, std::less<double>, 8> real_bucket_heap(calculator, alpha, beta);
+                    real_bucket_heap.set_use_h_max(use_h_max);
                     process_result(run_benchmark<DynamicPotentialSearch>(env, real_bucket_heap, desc, !is_file_output, collect_metrics, focal_w));
                     break;
                 }
@@ -397,24 +402,28 @@ void execute_benchmarks(
             }
                 } else if (algo_name == "astar_agg_two_level") {
             AggregatedTwoLevelBucketQueue queue(alpha, beta);
-            std::string desc = "A* with AggregatedTwoLevelBucketQueue (a=" + std::to_string(alpha) + ", b=" + std::to_string(beta) + ")";
+            queue.set_use_h_max(use_h_max);
+            std::string desc = "A* with AggregatedTwoLevelBucketQueue (a=" + std::to_string(alpha) + ", b=" + std::to_string(beta) + (use_h_max ? ", use_h_max" : "") + ")";
             process_result(run_benchmark<AStar>(env, queue, desc, !is_file_output, collect_metrics));
         } else if (algo_name == "anastar_realbucket") {
             ANAStarPriorityCalculator calculator;
-            std::string desc = "ANA* with RealBucketHeap (a=" + std::to_string(alpha) + ", b=" + std::to_string(beta) + ", D=" + std::to_string(d_ary) + ")";
+            std::string desc = "ANA* with RealBucketHeap (a=" + std::to_string(alpha) + ", b=" + std::to_string(beta) + ", D=" + std::to_string(d_ary) + (use_h_max ? ", use_h_max" : "") + ")";
             switch (d_ary) {
                 case 2: {
                     RealBucketHeap<ANAStarPriorityCalculator, std::less<double>, 2> real_bucket_heap(calculator, alpha, beta);
+                    real_bucket_heap.set_use_h_max(use_h_max);
                     process_result(run_benchmark<ANAStar>(env, real_bucket_heap, desc, !is_file_output, collect_metrics));
                     break;
                 }
                 case 4: {
                     RealBucketHeap<ANAStarPriorityCalculator, std::less<double>, 4> real_bucket_heap(calculator, alpha, beta);
+                    real_bucket_heap.set_use_h_max(use_h_max);
                     process_result(run_benchmark<ANAStar>(env, real_bucket_heap, desc, !is_file_output, collect_metrics));
                     break;
                 }
                 case 8: {
                     RealBucketHeap<ANAStarPriorityCalculator, std::less<double>, 8> real_bucket_heap(calculator, alpha, beta);
+                    real_bucket_heap.set_use_h_max(use_h_max);
                     process_result(run_benchmark<ANAStar>(env, real_bucket_heap, desc, !is_file_output, collect_metrics));
                     break;
                 }
@@ -496,6 +505,7 @@ int main(int argc, char** argv) {
 
         ("non-heavy-heuristic", "Use non-heavy (unit cost) heuristic for heavy environments", cxxopts::value<bool>()->default_value("false"))
         ("focal-w", "Suboptimality bound for Focal Search", cxxopts::value<double>()->default_value("1.5"))
+        ("use-h-max", "Use maximum possible h-value for aggregated bucket representative", cxxopts::value<bool>()->default_value("false"))
 
         ("e,environments", "Comma-separated list of environments (grid, pancake, korf100, random_grid, heavy_pancake, heavy_korf100, msa)", cxxopts::value<std::string>()->default_value("grid,pancake,korf100"))
         ("l,algorithms", "Comma-separated list of algorithms to run", cxxopts::value<std::string>()->default_value("astar_binary,astar_bucket,anytime_astar_binary,anastar_binary,anastar_bucket,anastar_logbucket,anastar_realbucket,astar_agg_two_level"))
@@ -555,6 +565,7 @@ int main(int argc, char** argv) {
     int term_width = get_terminal_width();
     int num_grid_runs = result["num-grid"].as<int>();
     int num_pancake_runs = result["num-pancake"].as<int>();
+    bool use_h_max = result["use-h-max"].as<bool>();
 
     for (const auto& env_name : envs_to_run) {
         if (env_name == "grid") {
@@ -572,13 +583,13 @@ int main(int argc, char** argv) {
                 GridEnvironment grid_env(result["grid-width"].as<int>(), result["grid-height"].as<int>(), 1 + i);
                 
                 if (!once_off_algos.empty()) {
-                    execute_benchmarks(grid_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                    execute_benchmarks(grid_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
                 }
                 
                 if (!d_sweep_algos.empty()) {
                     auto ds = parse_list<int>(result["grid-ds"].as<std::string>());
                     for (int d : ds) {
-                        execute_benchmarks(grid_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                        execute_benchmarks(grid_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
                     }
                 }
 
@@ -589,7 +600,7 @@ int main(int argc, char** argv) {
                     for (int d : ds) {
                         for (uint32_t alpha : alphas) {
                             for (uint32_t beta : betas) {
-                                execute_benchmarks(grid_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                                execute_benchmarks(grid_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
                             }
                         }
                     }
@@ -611,13 +622,13 @@ int main(int argc, char** argv) {
                 pancake_env.generate_start_node();
 
                 if (!once_off_algos.empty()) {
-                    execute_benchmarks(pancake_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                    execute_benchmarks(pancake_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
                 }
 
                 if (!d_sweep_algos.empty()) {
                     auto ds = parse_list<int>(result["pancake-ds"].as<std::string>());
                     for (int d : ds) {
-                        execute_benchmarks(pancake_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                        execute_benchmarks(pancake_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
                     }
                 }
                 
@@ -628,7 +639,7 @@ int main(int argc, char** argv) {
                     for (int d : ds) {
                         for (uint32_t alpha : alphas) {
                             for (uint32_t beta : betas) {
-                                execute_benchmarks(pancake_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                                execute_benchmarks(pancake_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
                             }
                         }
                     }
@@ -651,13 +662,13 @@ int main(int argc, char** argv) {
                     SlidingTileEnvironment tile_env(index, "korf100.txt", 20000000);
 
                     if (!once_off_algos.empty()) {
-                        execute_benchmarks(tile_env, once_off_algos, 0, 0, 0, out, file_output, env_name, index, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                        execute_benchmarks(tile_env, once_off_algos, 0, 0, 0, out, file_output, env_name, index, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
                     }
                     
                     auto ds = parse_list<int>(result["korf-ds"].as<std::string>());
                     if (!d_sweep_algos.empty()) {
                         for (int d : ds) {
-                            execute_benchmarks(tile_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, index, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                            execute_benchmarks(tile_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, index, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
                         }
                     }
 
@@ -667,7 +678,7 @@ int main(int argc, char** argv) {
                         for (int d : ds) {
                             for (uint32_t alpha : alphas) {
                                 for (uint32_t beta : betas) {
-                                    execute_benchmarks(tile_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, index, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                                    execute_benchmarks(tile_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, index, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
                                 }
                             }
                         }
@@ -692,13 +703,13 @@ int main(int argc, char** argv) {
                 heavy_pancake_env.generate_start_node();
 
                 if (!once_off_algos.empty()) {
-                    execute_benchmarks(heavy_pancake_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                    execute_benchmarks(heavy_pancake_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
                 }
 
                 if (!d_sweep_algos.empty()) {
                     auto ds = parse_list<int>(result["pancake-ds"].as<std::string>());
                     for (int d : ds) {
-                        execute_benchmarks(heavy_pancake_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                        execute_benchmarks(heavy_pancake_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
                     }
                 }
                 
@@ -709,7 +720,7 @@ int main(int argc, char** argv) {
                     for (int d : ds) {
                         for (uint32_t alpha : alphas) {
                             for (uint32_t beta : betas) {
-                                execute_benchmarks(heavy_pancake_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                                execute_benchmarks(heavy_pancake_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
                             }
                         }
                     }
@@ -734,13 +745,13 @@ int main(int argc, char** argv) {
                     heavy_tile_env.set_heavy_heuristic(!result["non-heavy-heuristic"].as<bool>());
 
                     if (!once_off_algos.empty()) {
-                        execute_benchmarks(heavy_tile_env, once_off_algos, 0, 0, 0, out, file_output, env_name, index, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                        execute_benchmarks(heavy_tile_env, once_off_algos, 0, 0, 0, out, file_output, env_name, index, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
                     }
                     
                     auto ds = parse_list<int>(result["korf-ds"].as<std::string>());
                     if (!d_sweep_algos.empty()) {
                         for (int d : ds) {
-                            execute_benchmarks(heavy_tile_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, index, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                            execute_benchmarks(heavy_tile_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, index, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
                         }
                     }
 
@@ -750,7 +761,7 @@ int main(int argc, char** argv) {
                         for (int d : ds) {
                             for (uint32_t alpha : alphas) {
                                 for (uint32_t beta : betas) {
-                                    execute_benchmarks(heavy_tile_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, index, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                                    execute_benchmarks(heavy_tile_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, index, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
                                 }
                             }
                         }
@@ -775,13 +786,13 @@ int main(int argc, char** argv) {
                 RandomGridEnvironment rand_grid_env(result["grid-width"].as<int>(), result["grid-height"].as<int>(), result["grid-max-edge-cost"].as<uint32_t>(), 42 + i);
                 
                 if (!once_off_algos.empty()) {
-                    execute_benchmarks(rand_grid_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                    execute_benchmarks(rand_grid_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
                 }
                 
                 if (!d_sweep_algos.empty()) {
                     auto ds = parse_list<int>(result["grid-ds"].as<std::string>());
                     for (int d : ds) {
-                        execute_benchmarks(rand_grid_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                        execute_benchmarks(rand_grid_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
                     }
                 }
 
@@ -792,7 +803,7 @@ int main(int argc, char** argv) {
                     for (int d : ds) {
                         for (uint32_t alpha : alphas) {
                             for (uint32_t beta : betas) {
-                                execute_benchmarks(rand_grid_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                                execute_benchmarks(rand_grid_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
                             }
                         }
                     }
@@ -834,13 +845,13 @@ int main(int argc, char** argv) {
                 MSA5Environment msa_env(current_sequences, 50000000);
 
                 if (!once_off_algos.empty()) {
-                    execute_benchmarks(msa_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                    execute_benchmarks(msa_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
                 }
 
                 if (!d_sweep_algos.empty()) {
                     auto ds = parse_list<int>(result["msa-ds"].as<std::string>());
                     for (int d : ds) {
-                        execute_benchmarks(msa_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                        execute_benchmarks(msa_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
                     }
                 }
 
@@ -851,7 +862,7 @@ int main(int argc, char** argv) {
                     for (int d : ds) {
                         for (uint32_t alpha : alphas) {
                             for (uint32_t beta : betas) {
-                                execute_benchmarks(msa_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                                execute_benchmarks(msa_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
                             }
                         }
                     }
@@ -876,13 +887,13 @@ int main(int argc, char** argv) {
             MSA6Environment msa_env(all_sequences, 50000000);
 
             if (!once_off_algos.empty()) {
-                execute_benchmarks(msa_env, once_off_algos, 0, 0, 0, out, file_output, env_name, 0, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                execute_benchmarks(msa_env, once_off_algos, 0, 0, 0, out, file_output, env_name, 0, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
             }
 
             if (!d_sweep_algos.empty()) {
                 auto ds = parse_list<int>(result["msa-ds"].as<std::string>());
                 for (int d : ds) {
-                    execute_benchmarks(msa_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, 0, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                    execute_benchmarks(msa_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, 0, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
                 }
             }
 
@@ -893,7 +904,7 @@ int main(int argc, char** argv) {
                 for (int d : ds) {
                     for (uint32_t alpha : alphas) {
                         for (uint32_t beta : betas) {
-                            execute_benchmarks(msa_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, 0, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                            execute_benchmarks(msa_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, 0, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
                         }
                     }
                 }
@@ -942,13 +953,13 @@ int main(int argc, char** argv) {
                     }
 
                     if (!once_off_algos.empty()) {
-                        execute_benchmarks(dimacs_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                        execute_benchmarks(dimacs_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
                     }
 
                     if (!d_sweep_algos.empty()) {
                         auto ds = parse_list<int>(result["dimacs-ds"].as<std::string>());
                         for (int d : ds) {
-                            execute_benchmarks(dimacs_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                            execute_benchmarks(dimacs_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
                         }
                     }
 
@@ -959,7 +970,7 @@ int main(int argc, char** argv) {
                         for (int d : ds) {
                             for (uint32_t alpha : alphas) {
                                 for (uint32_t beta : betas) {
-                                    execute_benchmarks(dimacs_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>());
+                                    execute_benchmarks(dimacs_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
                                 }
                             }
                         }

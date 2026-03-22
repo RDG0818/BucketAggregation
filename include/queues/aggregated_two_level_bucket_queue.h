@@ -31,9 +31,11 @@ private:
 public:
 
   AggregatedTwoLevelBucketQueue(uint32_t alpha = 1, uint32_t beta = 1, uint32_t f_cap_hint = 1024) 
-  : f_offset_(0), f_min_idx_(INF_COST), count_(0), pool_(1000, 1000), alpha_(alpha), beta_(beta) {
+  : f_offset_(0), f_min_idx_(INF_COST), count_(0), pool_(1000, 1000), alpha_(alpha), beta_(beta), use_h_max_(false) {
     f_buckets_.reserve(f_cap_hint);
   }
+
+  void set_use_h_max(bool val) { use_h_max_ = val; }
 
   void push(uint32_t id, uint32_t f, uint32_t h) {
     uint32_t f_idx_raw = f / beta_;
@@ -140,8 +142,13 @@ public:
   uint32_t get_h_min(uint32_t f_idx_raw) const {
     if (f_idx_raw < f_offset_) return INF_COST;
     uint32_t f_idx = f_idx_raw - f_offset_;
-    if (f_idx >= f_buckets_.size()) return INF_COST;
-    return f_buckets_[f_idx].h_min;
+    if (f_idx >= f_buckets_.size() || f_buckets_[f_idx].count == 0) return INF_COST;
+    uint32_t h_idx = f_buckets_[f_idx].h_min;
+    if (use_h_max_) {
+      return (h_idx + 1) * alpha_ - 1;
+    } else {
+      return h_idx * alpha_;
+    }
   }
 
   utils::QueueDetailedMetrics get_detailed_metrics() const {
@@ -272,4 +279,5 @@ private:
   BlockPool pool_;
   uint32_t alpha_;
   uint32_t beta_;
+  bool use_h_max_;
 };
