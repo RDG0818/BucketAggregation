@@ -1,6 +1,6 @@
 # Bucket Aggregation in Bucket-Based Priority Queues for Heuristic Search
 
-Research implementation accompanying the paper **"Bucket Aggregation in Bucket-Based Priority Queues for Heuristic Search"** (SoCS 2026), extending [Fereday & Hansen (SoCS 2024)](https://ojs.aaai.org/index.php/SOCS/article/view/35976).
+Research implementation accompanying the paper **"Bucket Aggregation in Bucket-Based Priority Queues for Heuristic Search"** (SoCS 2026), extending [Fereday & Hansen (SoCS 2025)](https://ojs.aaai.org/index.php/SOCS/article/view/35976).
 
 ## The Paper
 
@@ -111,7 +111,7 @@ Pop is O(1) amortized: a lazy cursor advances past empty f-buckets; within each 
 
 #### BucketHeap
 
-Wraps `TwoLevelBucketQueue` with an `IndexedDaryHeap` that tracks which primary f-buckets are non-empty. The heap is keyed by f-bucket index with a priority dependent on the non-admissible algorithm-specific weighting (e.g., ANA*'s $E(n)$).
+Wraps `TwoLevelBucketQueue` with an `IndexedDaryHeap` that tracks which primary f-buckets are non-empty. The heap is keyed by f-bucket index with a priority dependent on the non-admissible algorithm-specific weighting (e.g., ANA*'s $E(n)$ ).
 
 `rebuild()` recomputes all heap priorities in O(n) without touching the bucket structure, making it highly efficient for algorithms that reorder the open list frequently.
 
@@ -138,7 +138,7 @@ All algorithms are templated on `<Environment, Queue>`.
 | ANA* | `ana_star.h` | $E(n) = (G_{upper} - g(n))\, /\, h(n)$ | Anytime; no fixed weight; auto-adjusts greediness |
 | DPS | `dps.h` | $U_D(n) = (\varepsilon \cdot f_{min} - g(n))\, /\, h(n)$ | Dynamic Potential Search; bounded suboptimal |
 
-**ANA\*** and **DPS** call `rebuild()` every time they find a new incumbent or detect that $f_{min}$ has increased. 
+ANA\* and DPS call `rebuild()` every time they find a new incumbent or detect that $f_{min}$ has increased. 
 
 ---
 
