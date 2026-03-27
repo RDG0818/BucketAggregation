@@ -42,7 +42,7 @@ A priority queue specialized for integer priorities, implemented as a dynamic `s
 
 #### Bucket Heap (`include/queues/bucket_heap.h`):
 
-#### Real Bucket Heap (`include/queues/real_bucket_heap.h`):
+#### Bucket Heap with Aggregation (`include/queues/bucket_heap.h`, with `alpha`/`beta` > 1):
 
 
 ### Environments

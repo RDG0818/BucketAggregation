@@ -7,7 +7,7 @@
 class TwoLevelBucketQueueTest : public ::testing::Test {
 protected:
   void SetUp() override {
-    queue = new TwoLevelBucketQueue(100);
+    queue = new TwoLevelBucketQueue(1, 1, 100);
   }
 
   void TearDown() override {

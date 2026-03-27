@@ -179,58 +179,6 @@ private:
 
 };
 
-class DimacsEnvironment {
-
-public:
-
-  DimacsEnvironment(const std::string& co_file, const std::string& gr_file, uint32_t start_node, uint32_t goal_node, uint32_t capacity = 10000000);
-
-  void reset_search() { pool_.prepare_for_search(); }
-
-  void get_successors(uint32_t u_id, std::vector<uint32_t>& neighbors);
-
-  inline uint32_t get_heuristic(uint32_t id) const { 
-    double dx = (coords_[id].first - coords_[goal_id_].first) / 20.0;
-    double dy = (coords_[id].second - coords_[goal_id_].second) / 20.0;
-    return static_cast<uint32_t>(std::sqrt(dx*dx + dy*dy));
-  }
-
-  bool is_goal(uint32_t id) const { return id == goal_id_; }
-
-  uint32_t get_start_node() { return start_id_; };
-
-  void set_start_goal(uint32_t s, uint32_t g) {
-    start_id_ = s;
-    goal_id_ = g;
-  }
-
-  uint32_t get_num_nodes() const { return adjacency_list_.size() - 1; }
-
-  inline uint32_t get_edge_cost(uint32_t u, uint32_t v) const { 
-    for (const auto& edge : adjacency_list_[u]) {
-      if (edge.to == v) return edge.cost;
-    }
-    return INF_COST;
-  }
-
-  NodePool& get_pool() { return pool_; }
-  const NodePool& get_pool() const { return pool_; }
-
-private:
-  uint32_t start_id_;
-  uint32_t goal_id_;
-  
-  struct Edge {
-    uint32_t to;
-    uint32_t cost;
-  };
-  
-  std::vector<std::vector<Edge>> adjacency_list_;
-  std::vector<std::pair<double, double>> coords_;
-  NodePool pool_;
-
-};
-
 class RandomGridEnvironment {
 
 public:

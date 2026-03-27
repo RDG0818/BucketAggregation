@@ -25,7 +25,6 @@ src/grid_environment.cpp
 src/pancake_environment.cpp 
 src/sliding_tile_environment.cpp 
 src/msa_environment.cpp
-src/dimacs_environment.cpp
 )
 add_library(core_lib ${SRC_FILES})
 

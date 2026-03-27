@@ -6,20 +6,20 @@
 #include "environments/node.h"
 
 struct MinCostCalculator {
-  double operator()(uint32_t f, uint32_t h_min) const {
-    return static_cast<double>(f + h_min);
+  double operator()(double f, double h_min) const {
+    return f + h_min;
   }
 };
 
 struct GradientCalculator {
   double G_upper = 10000.0;
 
-  double operator()(uint32_t f, uint32_t h_min) const {
+  double operator()(double f, double h_min) const {
     if (h_min == 0) return -std::numeric_limits<double>::max(); // Goal is best
     if (f >= G_upper) return std::numeric_limits<double>::max(); // Prune
 
     // Maximizing (G - f) / h is equivalent to Minimizing -(G - f) / h
-    return -((G_upper - f) / static_cast<double>(h_min));
+    return -((G_upper - f) / h_min);
   }
 };
 

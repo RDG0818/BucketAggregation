@@ -5,9 +5,6 @@
 #include <vector>
 #include <cstdint>
 #include <fstream>
-#include <iomanip>
-#include <iostream>
-#include "environments/environments.h"
 #include "utils/utils.h"
 
 template <typename E, typename PQ> 

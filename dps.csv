@@ -1,4 +1,0 @@
-environment,instance,algorithm_description,solution_cost,nodes_expanded,nodes_generated,total_time_ms,memory_peak_kb,count_enqueue,time_enqueue_ns,count_dequeue,time_dequeue_ns,count_rebuild,time_rebuild_ns,count_decrease_key,time_decrease_key_ns,count_stale_pops,count_update_pushes,wasted_time_ns,total_overhead_ns,total_hmin_scans,total_secondary_bucket_allocs
-msa6,0,"DPS with IndexedHeap (D=2)",98791,447,27432,39.8861,186624,27433,1.48914e+06,447,43239,1,75,0,0,0,0,0,1.53246e+06,0,0
-msa6,0,"DPS with BucketHeap (D=2)",96083,11478420,51153830,160833,12689412,51153831,1.9229e+10,20480942,6.59891e+09,844,1.30817e+07,0,0,9002522,21161049,2.90059e+09,2.58409e+10,428959,3441
-msa6,0,"DPS with RealBucketHeap (a=100, b=1, D=2)",96083,11493624,51196588,137740,12689412,51196589,8.91459e+09,20502139,9.21095e+08,801,1.24246e+07,0,0,9008515,21168804,4.04723e+08,9.84811e+09,4314,3443

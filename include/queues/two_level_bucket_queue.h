@@ -21,7 +21,7 @@ class BlockPool {
 
 public:
 
-  BlockPool(size_t chunk_size = 1000, size_t initial_capacity = 0) 
+  BlockPool(size_t chunk_size = 1000, size_t initial_capacity = 0)
   : chunk_size_(chunk_size) {
     if (initial_capacity > 0) {
       reserve(initial_capacity);
@@ -77,6 +77,14 @@ private:
 
 };
 
+// Two-level bucket queue indexed by f-cost (primary) and h-cost (secondary).
+//
+// When alpha > 1 or beta > 1, secondary/primary buckets are aggregated: a node
+// with cost f is placed in primary bucket floor(f/beta), and a node with cost h
+// is placed in secondary bucket floor(h/alpha). This reduces bucket sparsity in
+// domains with large optimal f-cost and informative heuristics at the expense of
+// some resolution in h-ordering. With alpha=beta=1 (the defaults), the queue
+// behaves as a standard two-level bucket queue.
 class TwoLevelBucketQueue {
 
 private:
@@ -90,31 +98,35 @@ private:
 
   struct PrimaryBucket {
     std::vector<SecondaryBucket> h_buckets;
-    uint32_t h_min = INF_COST;
+    uint32_t h_min = INF_COST; // index of minimum non-empty secondary bucket
     size_t count = 0;
   };
 
 public:
 
-  TwoLevelBucketQueue(uint32_t f_cap_hint = 1024) 
-  : f_offset_(0), f_min_idx_(INF_COST), count_(0), pool_(1000, 1000) {
+  TwoLevelBucketQueue(uint32_t alpha = 1, uint32_t beta = 1, uint32_t f_cap_hint = 1024)
+  : f_offset_(0), f_min_idx_(INF_COST), count_(0), pool_(1000, 1000),
+    alpha_(alpha), beta_(beta) {
     f_buckets_.reserve(f_cap_hint);
   }
 
   void push(uint32_t id, uint32_t f, uint32_t h) {
+    uint32_t f_b = f / beta_;
+    uint32_t h_b = h / alpha_;
+
     if (count_ == 0) {
-      f_offset_ = f;
+      f_offset_ = f_b;
       f_min_idx_ = 0;
     }
 
-    if (f < f_offset_) {
-      uint32_t delta = f_offset_ - f;
+    if (f_b < f_offset_) {
+      uint32_t delta = f_offset_ - f_b;
       f_buckets_.insert(f_buckets_.begin(), delta, PrimaryBucket{});
-      f_offset_ = f;
+      f_offset_ = f_b;
       f_min_idx_ = 0;
     }
 
-    uint32_t f_idx = f - f_offset_;
+    uint32_t f_idx = f_b - f_offset_;
     if (f_idx >= f_buckets_.size()) {
       size_t new_size = std::max<size_t>(f_idx + 1, f_buckets_.size() * 1.5);
       f_buckets_.resize(new_size);
@@ -122,15 +134,15 @@ public:
 
     auto& p_bucket = f_buckets_[f_idx];
 
-    if (h >= p_bucket.h_buckets.size()) {
+    if (h_b >= p_bucket.h_buckets.size()) {
       if (p_bucket.h_buckets.capacity() == 0) {
         secondary_bucket_allocs_++;
       }
-      size_t new_size = std::max<size_t>(h + 1, p_bucket.h_buckets.size() * 1.5);
+      size_t new_size = std::max<size_t>(h_b + 1, p_bucket.h_buckets.size() * 1.5);
       p_bucket.h_buckets.resize(new_size);
     }
 
-    auto& s_bucket = p_bucket.h_buckets[h];
+    auto& s_bucket = p_bucket.h_buckets[h_b];
 
     if (!s_bucket.head || s_bucket.top == Block::SIZE) {
       Block* new_block = pool_.allocate();
@@ -144,7 +156,7 @@ public:
     p_bucket.count++;
     count_++;
 
-    if (h < p_bucket.h_min) p_bucket.h_min = h;
+    if (h_b < p_bucket.h_min) p_bucket.h_min = h_b;
     if (f_idx < f_min_idx_) f_min_idx_ = f_idx;
   }
 
@@ -165,9 +177,11 @@ public:
     return pop_from_bucket(f_buckets_[f_min_idx_]);
   }
 
+  // Pop a node from the primary bucket containing raw cost f.
   uint32_t pop_from(uint32_t f) noexcept {
-    if (f < f_offset_) return NODE_NULL;
-    uint32_t f_idx = f - f_offset_;
+    uint32_t f_b = f / beta_;
+    if (f_b < f_offset_) return NODE_NULL;
+    uint32_t f_idx = f_b - f_offset_;
     if (f_idx >= f_buckets_.size() || f_buckets_[f_idx].count == 0) {
       return NODE_NULL;
     }
@@ -176,37 +190,45 @@ public:
   }
 
   size_t get_node_count(uint32_t f) const noexcept {
-    if (f < f_offset_) return 0;
-    uint32_t f_idx = f - f_offset_;
+    uint32_t f_b = f / beta_;
+    if (f_b < f_offset_) return 0;
+    uint32_t f_idx = f_b - f_offset_;
     if (f_idx >= f_buckets_.size()) return 0;
     return f_buckets_[f_idx].count;
   }
 
+  // Returns the index of the minimum non-empty secondary bucket for primary
+  // bucket f. With alpha > 1 this is a bucket index, not a raw h-cost.
   uint32_t get_h_min(uint32_t f) const noexcept {
-    if (f < f_offset_) return INF_COST;
-    uint32_t f_idx = f - f_offset_;
+    uint32_t f_b = f / beta_;
+    if (f_b < f_offset_) return INF_COST;
+    uint32_t f_idx = f_b - f_offset_;
     if (f_idx >= f_buckets_.size()) return INF_COST;
     return f_buckets_[f_idx].h_min;
   }
 
   uint32_t peek_top_node(uint32_t f, uint32_t h) const noexcept {
-    if (f < f_offset_) return NODE_NULL;
-    uint32_t f_idx = f - f_offset_;
-    if (f_idx >= f_buckets_.size() || h >= f_buckets_[f_idx].h_buckets.size()) {  
+    uint32_t f_b = f / beta_;
+    uint32_t h_b = h / alpha_;
+    if (f_b < f_offset_) return NODE_NULL;
+    uint32_t f_idx = f_b - f_offset_;
+    if (f_idx >= f_buckets_.size() || h_b >= f_buckets_[f_idx].h_buckets.size()) {
       return NODE_NULL;
     }
 
-    const auto& s_bucket = f_buckets_[f_idx].h_buckets[h];
+    const auto& s_bucket = f_buckets_[f_idx].h_buckets[h_b];
     if (s_bucket.empty()) return NODE_NULL;
 
     return s_bucket.head->elements[s_bucket.top - 1];
   }
 
   void set_f_min(uint32_t f) noexcept {
-    if (f < f_offset_) f_min_idx_ = 0;
-    else f_min_idx_ = f - f_offset_;
+    uint32_t f_b = f / beta_;
+    if (f_b < f_offset_) f_min_idx_ = 0;
+    else f_min_idx_ = f_b - f_offset_;
   }
 
+  // Returns the minimum non-empty primary bucket index (= raw f_min / beta).
   uint32_t get_f_min() const noexcept {
     if (f_min_idx_ < f_buckets_.size() && f_buckets_[f_min_idx_].count == 0) {
       while (f_min_idx_ < f_buckets_.size() && f_buckets_[f_min_idx_].count == 0) {
@@ -217,8 +239,11 @@ public:
     return f_offset_ + f_min_idx_;
   }
 
-  uint32_t get_alpha() const noexcept { return 1; }
-  uint32_t get_beta() const noexcept { return 1; }
+  // Returns the raw f lower bound of the minimum non-empty primary bucket.
+  uint32_t get_f_min_raw() const noexcept { return get_f_min() * beta_; }
+
+  uint32_t get_alpha() const noexcept { return alpha_; }
+  uint32_t get_beta() const noexcept { return beta_; }
 
   uint64_t get_hmin_scans() const noexcept { return hmin_scans_; }
   uint64_t get_secondary_bucket_allocs() const noexcept { return secondary_bucket_allocs_; }
@@ -249,11 +274,11 @@ public:
 
     for (uint32_t f_idx = 0; f_idx < f_buckets_.size(); ++f_idx) {
       const auto& p_bucket = f_buckets_[f_idx];
-      uint32_t f_val = f_offset_ + f_idx;
+      uint32_t f_val = (f_offset_ + f_idx) * beta_;
       if (p_bucket.count == 0) continue;
 
       m.primary_buckets_nonempty++;
-      m.f_max = f_val;
+      m.f_max = f_offset_ + f_idx;
       m.secondary_buckets_total += p_bucket.h_buckets.size();
 
       uint32_t local_h_min = INF_COST;
@@ -261,14 +286,14 @@ public:
       size_t local_sec_nonempty = 0;
       bool p_bucket_has_logical = false;
 
-      for (uint32_t h = 0; h < p_bucket.h_buckets.size(); ++h) {
-        const auto& s_bucket = p_bucket.h_buckets[h];
+      for (uint32_t h_idx = 0; h_idx < p_bucket.h_buckets.size(); ++h_idx) {
+        const auto& s_bucket = p_bucket.h_buckets[h_idx];
         if (s_bucket.empty()) continue;
 
         local_sec_nonempty++;
         m.secondary_buckets_nonempty++;
-        if (h < local_h_min) local_h_min = h;
-        if (h > local_h_max) local_h_max = h;
+        if (h_idx < local_h_min) local_h_min = h_idx;
+        if (h_idx > local_h_max) local_h_max = h_idx;
 
         size_t node_count = 0;
         size_t logical_node_count = 0;
@@ -276,7 +301,7 @@ public:
         uint32_t top = s_bucket.top;
         while (curr) {
           for (uint32_t i = 0; i < top; ++i) {
-            if (!is_stale(curr->elements[i], f_val, h)) {
+            if (!is_stale(curr->elements[i], f_val, h_idx * alpha_)) {
               logical_node_count++;
             }
           }
@@ -291,7 +316,7 @@ public:
           p_bucket_has_logical = true;
         }
 
-        m.h_distribution[h] += node_count;
+        m.h_distribution[h_idx * alpha_] += node_count;
         nodes_per_sec_vals.push_back(node_count);
       }
 
@@ -300,8 +325,8 @@ public:
       }
 
       if (local_h_min != INF_COST) {
-        h_mins.push_back(local_h_min);
-        h_maxs.push_back(local_h_max);
+        h_mins.push_back(local_h_min * alpha_);
+        h_maxs.push_back(local_h_max * alpha_);
         sec_per_pri_vals.push_back(static_cast<double>(local_sec_nonempty));
       }
     }
@@ -355,10 +380,10 @@ private:
       Block* old_head = s_bucket.head;
       s_bucket.head = s_bucket.head->next;
       pool_.deallocate(old_head);
-      
+
       if (s_bucket.head) s_bucket.top = Block::SIZE;
     }
-    
+
     p_bucket.count--;
     count_--;
 
@@ -382,4 +407,6 @@ private:
   uint64_t hmin_scans_ = 0;
   uint64_t secondary_bucket_allocs_ = 0;
   BlockPool pool_;
+  uint32_t alpha_;
+  uint32_t beta_;
 };

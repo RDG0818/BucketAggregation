@@ -5,28 +5,18 @@
 #include <vector>
 #include <cstdint>
 #include <limits>
-#include <iostream>
-#include <iomanip>
 #include <fstream>
 #include <set>
 #include "environments/node.h"
 #include "utils/utils.h"
 #include "queues/bucket_heap.h"
-#include "queues/real_bucket_heap.h"
-#include "queues/log_bucket_heap.h"
 
-// Trait to detect bucket heaps
+// Trait to detect bucket heaps (used to select the native rebuild/f_min path)
 template<typename T>
 struct is_bucket_heap_dps : std::false_type {};
 
 template<typename PC, typename C, int D>
 struct is_bucket_heap_dps<BucketHeap<PC, C, D>> : std::true_type {};
-
-template<typename PC, typename C, int D>
-struct is_bucket_heap_dps<RealBucketHeap<PC, C, D>> : std::true_type {};
-
-template<typename PC, typename C, int D>
-struct is_bucket_heap_dps<LogBucketHeap<PC, C, D>> : std::true_type {};
 
 template<typename Q>
 struct is_bucket_heap_dps<utils::ProfiledQueue<Q>> : is_bucket_heap_dps<Q> {};

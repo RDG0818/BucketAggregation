@@ -23,15 +23,10 @@
 #include "algorithms/anytime_a_star.h"
 #include "algorithms/ana_star.h"
 #include "algorithms/dps.h"
-#include "algorithms/focal_search.h"
 #include "environments/environments.h"
-#include "queues/binary_heap.h"
 #include "queues/bucket_queue.h"
 #include "queues/bucket_heap.h"
-#include "queues/real_bucket_heap.h"
-#include "queues/log_bucket_heap.h"
 #include "queues/two_level_bucket_queue.h"
-#include "queues/aggregated_two_level_bucket_queue.h"
 #include "utils/utils.h"
 
 // Struct to hold benchmark results
@@ -268,47 +263,6 @@ void execute_benchmarks(
         } else if (algo_name == "dps_binary") {
             IndexedDaryHeap<double, 2, std::less<double>> heap;
             process_result(run_benchmark<DynamicPotentialSearch>(env, heap, "DPS with IndexedHeap (D=2)", !is_file_output, collect_metrics, focal_w));
-        } else if (algo_name == "focal_binary") {
-            IndexedDaryHeap<uint32_t, 2, std::greater<uint32_t>> open_pq;
-            IndexedDaryHeap<uint32_t, 2, std::greater<uint32_t>> focal_pq;
-            
-            utils::SearchStats stats;
-            using ProfiledHeap = utils::ProfiledQueue<IndexedDaryHeap<uint32_t, 2, std::greater<uint32_t>>>;
-            
-            ProfiledHeap p_open(open_pq, stats);
-            ProfiledHeap p_focal(focal_pq, stats);
-            
-            FocalSearch<Environment, ProfiledHeap, ProfiledHeap> solver(env, p_open, p_focal, &stats, collect_metrics, focal_w);
-            
-            auto start_time = std::chrono::steady_clock::now();
-            solver.solve();
-            auto end_time = std::chrono::steady_clock::now();
-            stats.total_time_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
-            stats.memory_peak_kb = utils::get_peak_memory_kb();
-            
-            process_result({"Focal Search (Two Heaps, w=" + std::to_string(focal_w) + ")", stats, env_name, instance_id});
-        } else if (algo_name == "focal_bucket") {
-            AggregatedTwoLevelBucketQueue buckets(alpha, beta);
-            buckets.set_use_h_max(use_h_max);
-            IndexedDaryHeap<uint32_t, 2, std::greater<uint32_t>> focal_heap;
-            
-            utils::SearchStats stats;
-            using ProfiledBuckets = utils::ProfiledQueue<AggregatedTwoLevelBucketQueue>;
-            using ProfiledHeap = utils::ProfiledQueue<IndexedDaryHeap<uint32_t, 2, std::greater<uint32_t>>>;
-            
-            ProfiledBuckets p_buckets(buckets, stats);
-            ProfiledHeap p_heap(focal_heap, stats);
-            
-            BucketFocalSearch<Environment, ProfiledBuckets, ProfiledHeap> solver(env, p_buckets, p_heap, &stats, collect_metrics, focal_w);
-            
-            auto start_time = std::chrono::steady_clock::now();
-            solver.solve();
-            auto end_time = std::chrono::steady_clock::now();
-            stats.total_time_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
-            stats.memory_peak_kb = utils::get_peak_memory_kb();
-            
-            std::string full_desc = "Focal Search (Aggregated Buckets, a=" + std::to_string(alpha) + ", b=" + std::to_string(beta) + ", w=" + std::to_string(focal_w) + (use_h_max ? ", use_h_max" : "") + ")";
-            process_result({full_desc, stats, env_name, instance_id});
         } else if (algo_name == "anastar_bucket") {
             ANAStarPriorityCalculator calculator;
             std::string desc = "ANA* with BucketHeap (D=" + std::to_string(d_ary) + ")";
@@ -355,80 +309,57 @@ void execute_benchmarks(
             }
         } else if (algo_name == "dps_realbucket") {
             DPSPriorityCalculator calculator;
-            std::string desc = "DPS with RealBucketHeap (a=" + std::to_string(alpha) + ", b=" + std::to_string(beta) + ", D=" + std::to_string(d_ary) + (use_h_max ? ", use_h_max" : "") + ")";
+            std::string desc = "DPS with BucketHeap (a=" + std::to_string(alpha) + ", b=" + std::to_string(beta) + ", D=" + std::to_string(d_ary) + (use_h_max ? ", use_h_max" : "") + ")";
             switch (d_ary) {
                 case 2: {
-                    RealBucketHeap<DPSPriorityCalculator, std::less<double>, 2> real_bucket_heap(calculator, alpha, beta);
-                    real_bucket_heap.set_use_h_max(use_h_max);
-                    process_result(run_benchmark<DynamicPotentialSearch>(env, real_bucket_heap, desc, !is_file_output, collect_metrics, focal_w));
+                    BucketHeap<DPSPriorityCalculator, std::less<double>, 2> bucket_heap(calculator, alpha, beta);
+                    bucket_heap.set_use_h_max(use_h_max);
+                    process_result(run_benchmark<DynamicPotentialSearch>(env, bucket_heap, desc, !is_file_output, collect_metrics, focal_w));
                     break;
                 }
                 case 4: {
-                    RealBucketHeap<DPSPriorityCalculator, std::less<double>, 4> real_bucket_heap(calculator, alpha, beta);
-                    real_bucket_heap.set_use_h_max(use_h_max);
-                    process_result(run_benchmark<DynamicPotentialSearch>(env, real_bucket_heap, desc, !is_file_output, collect_metrics, focal_w));
+                    BucketHeap<DPSPriorityCalculator, std::less<double>, 4> bucket_heap(calculator, alpha, beta);
+                    bucket_heap.set_use_h_max(use_h_max);
+                    process_result(run_benchmark<DynamicPotentialSearch>(env, bucket_heap, desc, !is_file_output, collect_metrics, focal_w));
                     break;
                 }
                 case 8: {
-                    RealBucketHeap<DPSPriorityCalculator, std::less<double>, 8> real_bucket_heap(calculator, alpha, beta);
-                    real_bucket_heap.set_use_h_max(use_h_max);
-                    process_result(run_benchmark<DynamicPotentialSearch>(env, real_bucket_heap, desc, !is_file_output, collect_metrics, focal_w));
+                    BucketHeap<DPSPriorityCalculator, std::less<double>, 8> bucket_heap(calculator, alpha, beta);
+                    bucket_heap.set_use_h_max(use_h_max);
+                    process_result(run_benchmark<DynamicPotentialSearch>(env, bucket_heap, desc, !is_file_output, collect_metrics, focal_w));
                     break;
                 }
                 default:
-                    if (!is_file_output) std::cerr << "Unsupported D value for RealBucketHeap: " << d_ary << std::endl;
+                    if (!is_file_output) std::cerr << "Unsupported D value for BucketHeap: " << d_ary << std::endl;
             }
-        }  else if (algo_name == "anastar_logbucket") {
-            ANAStarPriorityCalculator calculator;
-            std::string desc = "ANA* with LogBucketHeap (D=" + std::to_string(d_ary) + ")";
-            switch (d_ary) {
-                case 2: {
-                    LogBucketHeap<ANAStarPriorityCalculator, std::less<double>, 2> log_bucket_heap(calculator);
-                    process_result(run_benchmark<ANAStar>(env, log_bucket_heap, desc, !is_file_output, collect_metrics));
-                    break;
-                }
-                case 4: {
-                    LogBucketHeap<ANAStarPriorityCalculator, std::less<double>, 4> log_bucket_heap(calculator);
-                    process_result(run_benchmark<ANAStar>(env, log_bucket_heap, desc, !is_file_output, collect_metrics));
-                    break;
-                }
-                case 8: {
-                    LogBucketHeap<ANAStarPriorityCalculator, std::less<double>, 8> log_bucket_heap(calculator);
-                    process_result(run_benchmark<ANAStar>(env, log_bucket_heap, desc, !is_file_output, collect_metrics));
-                    break;
-                }
-                default:
-                    if (!is_file_output) std::cerr << "Unsupported D value for LogBucketHeap: " << d_ary << std::endl;
-            }
-                } else if (algo_name == "astar_agg_two_level") {
-            AggregatedTwoLevelBucketQueue queue(alpha, beta);
-            queue.set_use_h_max(use_h_max);
-            std::string desc = "A* with AggregatedTwoLevelBucketQueue (a=" + std::to_string(alpha) + ", b=" + std::to_string(beta) + (use_h_max ? ", use_h_max" : "") + ")";
+        } else if (algo_name == "astar_agg_two_level") {
+            TwoLevelBucketQueue queue(alpha, beta);
+            std::string desc = "A* with TwoLevelBucketQueue (a=" + std::to_string(alpha) + ", b=" + std::to_string(beta) + ")";
             process_result(run_benchmark<AStar>(env, queue, desc, !is_file_output, collect_metrics));
         } else if (algo_name == "anastar_realbucket") {
             ANAStarPriorityCalculator calculator;
-            std::string desc = "ANA* with RealBucketHeap (a=" + std::to_string(alpha) + ", b=" + std::to_string(beta) + ", D=" + std::to_string(d_ary) + (use_h_max ? ", use_h_max" : "") + ")";
+            std::string desc = "ANA* with BucketHeap (a=" + std::to_string(alpha) + ", b=" + std::to_string(beta) + ", D=" + std::to_string(d_ary) + (use_h_max ? ", use_h_max" : "") + ")";
             switch (d_ary) {
                 case 2: {
-                    RealBucketHeap<ANAStarPriorityCalculator, std::less<double>, 2> real_bucket_heap(calculator, alpha, beta);
-                    real_bucket_heap.set_use_h_max(use_h_max);
-                    process_result(run_benchmark<ANAStar>(env, real_bucket_heap, desc, !is_file_output, collect_metrics));
+                    BucketHeap<ANAStarPriorityCalculator, std::less<double>, 2> bucket_heap(calculator, alpha, beta);
+                    bucket_heap.set_use_h_max(use_h_max);
+                    process_result(run_benchmark<ANAStar>(env, bucket_heap, desc, !is_file_output, collect_metrics));
                     break;
                 }
                 case 4: {
-                    RealBucketHeap<ANAStarPriorityCalculator, std::less<double>, 4> real_bucket_heap(calculator, alpha, beta);
-                    real_bucket_heap.set_use_h_max(use_h_max);
-                    process_result(run_benchmark<ANAStar>(env, real_bucket_heap, desc, !is_file_output, collect_metrics));
+                    BucketHeap<ANAStarPriorityCalculator, std::less<double>, 4> bucket_heap(calculator, alpha, beta);
+                    bucket_heap.set_use_h_max(use_h_max);
+                    process_result(run_benchmark<ANAStar>(env, bucket_heap, desc, !is_file_output, collect_metrics));
                     break;
                 }
                 case 8: {
-                    RealBucketHeap<ANAStarPriorityCalculator, std::less<double>, 8> real_bucket_heap(calculator, alpha, beta);
-                    real_bucket_heap.set_use_h_max(use_h_max);
-                    process_result(run_benchmark<ANAStar>(env, real_bucket_heap, desc, !is_file_output, collect_metrics));
+                    BucketHeap<ANAStarPriorityCalculator, std::less<double>, 8> bucket_heap(calculator, alpha, beta);
+                    bucket_heap.set_use_h_max(use_h_max);
+                    process_result(run_benchmark<ANAStar>(env, bucket_heap, desc, !is_file_output, collect_metrics));
                     break;
                 }
                 default:
-                    if (!is_file_output) std::cerr << "Unsupported D value for RealBucketHeap: " << d_ary << std::endl;
+                    if (!is_file_output) std::cerr << "Unsupported D value for BucketHeap: " << d_ary << std::endl;
             }
         }
     }
@@ -493,22 +424,12 @@ int main(int argc, char** argv) {
         ("msa-ds", "CSV for MSA D", cxxopts::value<std::string>()->default_value("2"))
         ("num-msa", "Number of random MSA instances to run", cxxopts::value<int>()->default_value("6"))
 
-        ("num-dimacs", "Number of random DIMACS instances to run", cxxopts::value<int>()->default_value("1"))
-
-        ("dimacs-co", "Path to DIMACS .co file", cxxopts::value<std::string>()->default_value("DIMACS/USA-road-d.NY.co"))
-        ("dimacs-gr", "Path to DIMACS .gr file", cxxopts::value<std::string>()->default_value("DIMACS/USA-road-t.NY.gr"))
-        ("dimacs-start", "DIMACS start node ID", cxxopts::value<uint32_t>()->default_value("1"))
-        ("dimacs-goal", "DIMACS goal node ID", cxxopts::value<uint32_t>()->default_value("264346"))
-        ("dimacs-alphas", "CSV for DIMACS alpha", cxxopts::value<std::string>()->default_value("1"))
-        ("dimacs-betas", "CSV for DIMACS beta", cxxopts::value<std::string>()->default_value("1"))
-        ("dimacs-ds", "CSV for DIMACS D", cxxopts::value<std::string>()->default_value("2"))
-
         ("non-heavy-heuristic", "Use non-heavy (unit cost) heuristic for heavy environments", cxxopts::value<bool>()->default_value("false"))
         ("focal-w", "Suboptimality bound for Focal Search", cxxopts::value<double>()->default_value("1.5"))
         ("use-h-max", "Use maximum possible h-value for aggregated bucket representative", cxxopts::value<bool>()->default_value("false"))
 
         ("e,environments", "Comma-separated list of environments (grid, pancake, korf100, random_grid, heavy_pancake, heavy_korf100, msa)", cxxopts::value<std::string>()->default_value("grid,pancake,korf100"))
-        ("l,algorithms", "Comma-separated list of algorithms to run", cxxopts::value<std::string>()->default_value("astar_binary,astar_bucket,anytime_astar_binary,anastar_binary,anastar_bucket,anastar_logbucket,anastar_realbucket,astar_agg_two_level"))
+        ("l,algorithms", "Comma-separated list of algorithms to run", cxxopts::value<std::string>()->default_value("astar_binary,astar_bucket,anytime_astar_binary,anastar_binary,anastar_bucket,anastar_realbucket,astar_agg_two_level"))
         ("h,help", "Print usage");
 
     auto result = options.parse(argc, argv);
@@ -541,7 +462,7 @@ int main(int argc, char** argv) {
     std::vector<std::string> algorithms_to_run;
     std::string algo_str = result["algorithms"].as<std::string>();
     if (algo_str == "all") {
-        algorithms_to_run = {"astar_binary", "astar_bucket", "anytime_astar_binary", "anastar_binary", "anastar_bucket", "anastar_logbucket", "anastar_realbucket", "astar_agg_two_level", "dps_binary", "dps_bucket", "dps_realbucket"};
+        algorithms_to_run = {"astar_binary", "astar_bucket", "anytime_astar_binary", "anastar_binary", "anastar_bucket", "anastar_realbucket", "astar_agg_two_level", "dps_binary", "dps_bucket", "dps_realbucket"};
     } else {
         algorithms_to_run = parse_list<std::string>(algo_str);
     }
@@ -550,9 +471,9 @@ int main(int argc, char** argv) {
     std::vector<std::string> d_sweep_algos;
     std::vector<std::string> full_sweep_algos;
     for(const auto& algo : algorithms_to_run) {
-        if (algo == "anastar_realbucket" || algo == "astar_agg_two_level" || algo == "focal_bucket" || algo == "dps_realbucket") {
+        if (algo == "anastar_realbucket" || algo == "astar_agg_two_level" || algo == "dps_realbucket") {
             full_sweep_algos.push_back(algo);
-        } else if (algo == "anastar_bucket" || algo == "anastar_logbucket" || algo == "dps_bucket") {
+        } else if (algo == "anastar_bucket" || algo == "dps_bucket") {
             d_sweep_algos.push_back(algo);
         } else {
             once_off_algos.push_back(algo);
@@ -910,77 +831,7 @@ int main(int argc, char** argv) {
                 }
             }
             if (!file_output) out << std::endl;
-        } else if (env_name == "dimacs") {
-            if (!file_output) {
-                out << "\n\033[1m" << "DIMACS Road Network Environment" 
-                        << "\033[0m\n" << std::string(term_width, '=') << "\n";
-            }
-
-            if (!file_output) {
-                out << "\033[1;34m" << "Running DIMACS Environment\033[0m" << std::endl;
-                print_header(out);
-            }
-
-            try {
-                DimacsEnvironment dimacs_env(
-                    result["dimacs-co"].as<std::string>(), 
-                    result["dimacs-gr"].as<std::string>(),
-                    result["dimacs-start"].as<uint32_t>(),
-                    result["dimacs-goal"].as<uint32_t>()
-                );
-
-                int num_dimacs_runs = result["num-dimacs"].as<int>();
-                std::mt19937 gen(42);
-                uint32_t max_node = dimacs_env.get_num_nodes();
-                std::uniform_int_distribution<uint32_t> dist(1, max_node);
-
-                for (int i = 0; i < num_dimacs_runs; ++i) {
-                    uint32_t start_node = result["dimacs-start"].as<uint32_t>();
-                    uint32_t goal_node = result["dimacs-goal"].as<uint32_t>();
-                    
-                    if (num_dimacs_runs > 1) {
-                        start_node = dist(gen);
-                        goal_node = dist(gen);
-                        while (start_node == goal_node) {
-                            goal_node = dist(gen);
-                        }
-                    }
-                    dimacs_env.set_start_goal(start_node, goal_node);
-
-                    if (!file_output) {
-                        out << "\033[1;34m" << "Running instance #" << i << " (Start: " << start_node << ", Goal: " << goal_node << ")\033[0m" << std::endl;
-                        print_header(out);
-                    }
-
-                    if (!once_off_algos.empty()) {
-                        execute_benchmarks(dimacs_env, once_off_algos, 0, 0, 0, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
-                    }
-
-                    if (!d_sweep_algos.empty()) {
-                        auto ds = parse_list<int>(result["dimacs-ds"].as<std::string>());
-                        for (int d : ds) {
-                            execute_benchmarks(dimacs_env, d_sweep_algos, 0, 0, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
-                        }
-                    }
-
-                    if (!full_sweep_algos.empty()) {
-                        auto alphas = parse_list<uint32_t>(result["dimacs-alphas"].as<std::string>());
-                        auto betas = parse_list<uint32_t>(result["dimacs-betas"].as<std::string>());
-                        auto ds = parse_list<int>(result["dimacs-ds"].as<std::string>());
-                        for (int d : ds) {
-                            for (uint32_t alpha : alphas) {
-                                for (uint32_t beta : betas) {
-                                    execute_benchmarks(dimacs_env, full_sweep_algos, alpha, beta, d, out, file_output, env_name, i, result["metrics"].as<bool>(), result["focal-w"].as<double>(), use_h_max);
-                                }
-                            }
-                        }
-                    }
-                    if (!file_output) out << std::endl;
-                }
-            } catch (const std::exception& e) {
-                std::cerr << "Error setting up DimacsEnvironment: " << e.what() << std::endl;
-            }
-        } 
+        }
         }
     if (file_output) {
         outfile.close();
