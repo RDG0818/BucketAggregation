@@ -22,14 +22,18 @@ preserves the relative ordering of the priority function, preventing the queue f
 
 ### Key Results
 
+Priority queue overhead (in milliseconds) for A* (above) and ANA* (below) using a binary heap, a standard bucket queue ($\alpha$ = 1), and a bucket queue/heap with secondary bucket aggregation based on the indicated aggregation factor $\alpha$.
+
+![Priority Queue Overhead Graph](images/combined_graph.png "Priority Queue Overhead")
+
 Hardware profiling of ANA* on Uniform Grid and 5-sequence MSA:
 
 | Domain | Queue | Time (s) | Page Faults | LLC Misses | Branch Misses
 |---|---|---|---|---|---|
 | Uniform Grid | Unaggregated | 97.02 | 234K | 109M | 1.62B
-| Uniform Grid | Aggregated α=100 | 47.22 | 8K | 40M | 0.49B
+| Uniform Grid | Aggregated $\alpha$=100 | 47.22 | 8K | 40M | 0.49B
 | MSA-5 | Unaggregated | 60.60 | 1.24M | 1.13B | 142M
-| MSA-5 | Aggregated α=100 | 49.90 | 55K | 0.94B | 90M
+| MSA-5 | Aggregated $\alpha$=100 | 49.90 | 55K | 0.94B | 90M
 
 ## Build & Run
 
