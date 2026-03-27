@@ -14,6 +14,10 @@
 #include <cxxopts.hpp>
 #include <sys/ioctl.h>
 #include <unistd.h>
+#ifdef __linux__
+#include <linux/perf_event.h>
+#include <sys/syscall.h>
+#endif
 
 #include "algorithms/a_star.h"
 #include "algorithms/anytime_a_star.h"
@@ -24,6 +28,104 @@
 #include "queues/bucket_heap.h"
 #include "queues/two_level_bucket_queue.h"
 #include "utils/utils.h"
+
+#ifdef __linux__
+// RAII wrapper around perf_event_open file descriptors.
+// Opens one fd per counter; reset+enable before solve(), disable+read after.
+// Degrades gracefully if perf_event_open is unavailable (available=false).
+struct PerfCounters {
+    int fd_llc_misses    = -1;
+    int fd_llc_refs      = -1;
+    int fd_branch_misses = -1;
+    int fd_branches      = -1;
+    int fd_cycles        = -1;
+    int fd_instructions  = -1;
+    // Software events — available regardless of perf_event_paranoid level.
+    int fd_faults_minor  = -1;
+    int fd_faults_major  = -1;
+    bool available       = false;
+
+    explicit PerfCounters() {
+        auto open_hw = [](uint64_t config) -> int {
+            perf_event_attr attr{};
+            attr.type           = PERF_TYPE_HARDWARE;
+            attr.size           = sizeof(attr);
+            attr.config         = config;
+            attr.disabled       = 1;
+            attr.exclude_kernel = 1;
+            attr.exclude_hv     = 1;
+            return static_cast<int>(syscall(SYS_perf_event_open, &attr, 0, -1, -1, 0));
+        };
+        auto open_cache = [](uint64_t cache_id, uint64_t op, uint64_t result) -> int {
+            perf_event_attr attr{};
+            attr.type           = PERF_TYPE_HW_CACHE;
+            attr.size           = sizeof(attr);
+            attr.config         = cache_id | (op << 8) | (result << 16);
+            attr.disabled       = 1;
+            attr.exclude_kernel = 1;
+            attr.exclude_hv     = 1;
+            return static_cast<int>(syscall(SYS_perf_event_open, &attr, 0, -1, -1, 0));
+        };
+        auto open_sw = [](uint64_t config) -> int {
+            perf_event_attr attr{};
+            attr.type     = PERF_TYPE_SOFTWARE;
+            attr.size     = sizeof(attr);
+            attr.config   = config;
+            attr.disabled = 1;
+            return static_cast<int>(syscall(SYS_perf_event_open, &attr, 0, -1, -1, 0));
+        };
+
+        fd_llc_misses    = open_cache(PERF_COUNT_HW_CACHE_LL, PERF_COUNT_HW_CACHE_OP_READ, PERF_COUNT_HW_CACHE_RESULT_MISS);
+        fd_llc_refs      = open_cache(PERF_COUNT_HW_CACHE_LL, PERF_COUNT_HW_CACHE_OP_READ, PERF_COUNT_HW_CACHE_RESULT_ACCESS);
+        fd_branch_misses = open_hw(PERF_COUNT_HW_BRANCH_MISSES);
+        fd_branches      = open_hw(PERF_COUNT_HW_BRANCH_INSTRUCTIONS);
+        fd_cycles        = open_hw(PERF_COUNT_HW_CPU_CYCLES);
+        fd_instructions  = open_hw(PERF_COUNT_HW_INSTRUCTIONS);
+        fd_faults_minor  = open_sw(PERF_COUNT_SW_PAGE_FAULTS_MIN);
+        fd_faults_major  = open_sw(PERF_COUNT_SW_PAGE_FAULTS_MAJ);
+
+        available = (fd_llc_misses != -1 || fd_branch_misses != -1 || fd_faults_minor != -1);
+    }
+
+    ~PerfCounters() {
+        for (int fd : {fd_llc_misses, fd_llc_refs, fd_branch_misses, fd_branches,
+                       fd_cycles, fd_instructions, fd_faults_minor, fd_faults_major})
+            if (fd != -1) close(fd);
+    }
+
+    void reset_and_enable() const {
+        for (int fd : {fd_llc_misses, fd_llc_refs, fd_branch_misses, fd_branches,
+                       fd_cycles, fd_instructions, fd_faults_minor, fd_faults_major}) {
+            if (fd != -1) {
+                ioctl(fd, PERF_EVENT_IOC_RESET,  0);
+                ioctl(fd, PERF_EVENT_IOC_ENABLE, 0);
+            }
+        }
+    }
+
+    void disable_and_read(utils::SearchStats& s) const {
+        for (int fd : {fd_llc_misses, fd_llc_refs, fd_branch_misses, fd_branches,
+                       fd_cycles, fd_instructions, fd_faults_minor, fd_faults_major})
+            if (fd != -1) ioctl(fd, PERF_EVENT_IOC_DISABLE, 0);
+
+        auto rd = [](int fd) -> uint64_t {
+            if (fd == -1) return 0;
+            uint64_t val = 0;
+            ::read(fd, &val, sizeof(val));
+            return val;
+        };
+
+        s.perf_llc_misses    = rd(fd_llc_misses);
+        s.perf_llc_refs      = rd(fd_llc_refs);
+        s.perf_branch_misses = rd(fd_branch_misses);
+        s.perf_branches      = rd(fd_branches);
+        s.perf_cycles        = rd(fd_cycles);
+        s.perf_instructions  = rd(fd_instructions);
+        s.perf_faults_minor  = rd(fd_faults_minor);
+        s.perf_faults_major  = rd(fd_faults_major);
+    }
+};
+#endif // __linux__
 
 // ─── Result ───────────────────────────────────────────────────────────────────
 
@@ -42,7 +144,9 @@ void write_csv_header(std::ostream& out) {
         << "count_enqueue,time_enqueue_ns,count_dequeue,time_dequeue_ns,count_rebuild,time_rebuild_ns,"
         << "count_decrease_key,time_decrease_key_ns,"
         << "count_stale_pops,count_update_pushes,wasted_time_ns,total_overhead_ns,"
-        << "total_hmin_scans,total_secondary_bucket_allocs\n";
+        << "total_hmin_scans,total_secondary_bucket_allocs,"
+        << "perf_llc_misses,perf_llc_refs,perf_branch_misses,perf_branches,"
+        << "perf_cycles,perf_instructions,perf_faults_minor,perf_faults_major\n";
 }
 
 void write_csv_row(std::ostream& out, const BenchmarkResult& r) {
@@ -61,63 +165,179 @@ void write_csv_row(std::ostream& out, const BenchmarkResult& r) {
         << s.count_decrease_key << "," << s.time_decrease_key << ","
         << s.count_stale_pops << "," << s.count_update_pushes << ","
         << wasted_time_ns << "," << total_overhead << ","
-        << s.total_hmin_scans << "," << s.total_secondary_bucket_allocs << "\n";
+        << s.total_hmin_scans << "," << s.total_secondary_bucket_allocs << ","
+        << s.perf_llc_misses << "," << s.perf_llc_refs << ","
+        << s.perf_branch_misses << "," << s.perf_branches << ","
+        << s.perf_cycles << "," << s.perf_instructions << ","
+        << s.perf_faults_minor << "," << s.perf_faults_major << "\n";
 }
 
 // ─── Table Output ─────────────────────────────────────────────────────────────
 
+// ANSI helpers
+#define BOLD    "\033[1m"
+#define DIM     "\033[2m"
+#define CYAN    "\033[36m"
+#define YELLOW  "\033[33m"
+#define GREEN   "\033[32m"
+#define RESET   "\033[0m"
+
 int get_terminal_width() {
     winsize size;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
-    return size.ws_col;
+    return size.ws_col > 0 ? size.ws_col : 100;
+}
+
+// Formats a nanosecond average as "123ns" or "1.2us" or "-"
+static std::string fmt_ns(double ns) {
+    if (ns <= 0) return "-";
+    std::ostringstream ss;
+    if (ns < 1000) ss << std::fixed << std::setprecision(0) << ns << "ns";
+    else            ss << std::fixed << std::setprecision(1) << ns / 1000.0 << "us";
+    return ss.str();
+}
+
+// Formats a millisecond duration as "1.234"
+static std::string fmt_ms(double ms) {
+    std::ostringstream ss;
+    ss << std::fixed << std::setprecision(3) << ms;
+    return ss.str();
+}
+
+// Formats a hardware counter as "1.2B", "456.7M", "12.3K", or the raw number
+static std::string fmt_count(uint64_t n) {
+    std::ostringstream ss;
+    ss << std::fixed << std::setprecision(1);
+    if      (n >= 1'000'000'000) ss << n / 1e9 << "B";
+    else if (n >= 1'000'000)     ss << n / 1e6 << "M";
+    else if (n >= 1'000)         ss << n / 1e3 << "K";
+    else                         ss << n;
+    return ss.str();
+}
+
+// Formats a large integer with comma separators: 1234567 -> "1,234,567"
+static std::string fmt_int(uint64_t n) {
+    std::string s = std::to_string(n);
+    for (int i = static_cast<int>(s.size()) - 3; i > 0; i -= 3)
+        s.insert(i, ",");
+    return s;
+}
+
+void print_env_header(std::ostream& out, const std::string& title, const std::string& subtitle = "") {
+    int w = get_terminal_width();
+    out << "\n" BOLD CYAN "  " << title << RESET;
+    if (!subtitle.empty()) out << DIM "  --  " << subtitle << RESET;
+    out << "\n" DIM "  " << std::string(w - 2, '-') << RESET "\n\n";
+}
+
+void print_instance_header(std::ostream& out, int instance_id) {
+    out << BOLD "  Instance #" << instance_id << RESET "\n";
 }
 
 void print_header(std::ostream& out) {
-    out << "\033[1m" << std::left
-        << std::setw(45) << "Algorithm"
-        << std::setw(15) << "Sol Cost"
-        << std::setw(15) << "Expanded"
-        << std::setw(15) << "Generated"
-        << std::setw(15) << "Time (ms)"
-        << std::setw(15) << "Mem (KB)"
-        << "\033[0m\n"
-        << std::string(get_terminal_width(), '-') << "\n";
+    out << DIM
+        << "  " << std::left  << std::setw(48) << "Algorithm"
+        << std::right
+        << std::setw(9)  << "Cost"
+        << std::setw(13) << "Expanded"
+        << std::setw(12) << "Time (ms)"
+        << std::setw(10) << "Mem (KB)"
+        << RESET "\n"
+        << DIM "  " << std::string(get_terminal_width() - 2, '-') << RESET "\n";
 }
 
 void print_row(std::ostream& out, const BenchmarkResult& r) {
     const auto& s = r.stats;
-    out << std::left
-        << std::setw(45) << r.description
-        << std::setw(15) << s.solution_cost
-        << std::setw(15) << s.nodes_expanded
-        << std::setw(15) << s.nodes_generated
-        << std::setw(15) << std::fixed << std::setprecision(3) << s.total_time_ms
-        << std::setw(15) << s.memory_peak_kb
-        << "\n";
 
-    double avg_enq = s.count_enqueue     > 0 ? s.time_enqueue     / s.count_enqueue     : 0;
-    double avg_deq = s.count_dequeue     > 0 ? s.time_dequeue     / s.count_dequeue     : 0;
-    double avg_reb = s.count_rebuild     > 0 ? s.time_rebuild     / s.count_rebuild     : 0;
-    double avg_dk  = s.count_decrease_key > 0 ? s.time_decrease_key / s.count_decrease_key : 0;
+    double avg_enq   = s.count_enqueue     > 0 ? s.time_enqueue     / s.count_enqueue     : 0;
+    double avg_deq   = s.count_dequeue     > 0 ? s.time_dequeue     / s.count_dequeue     : 0;
+    double avg_reb   = s.count_rebuild     > 0 ? s.time_rebuild     / s.count_rebuild     : 0;
+    double avg_dk    = s.count_decrease_key > 0 ? s.time_decrease_key / s.count_decrease_key : 0;
+    double overhead  = (s.time_enqueue + s.time_dequeue + s.time_rebuild + s.time_decrease_key) / 1e6;
     double wasted_ms = (avg_deq * s.count_stale_pops) / 1e6;
 
-    out << "  \033[2mQueue Ops -> "
-        << "Enq: "   << s.count_enqueue     << " (" << std::fixed << std::setprecision(1) << avg_enq << " ns), "
-        << "Deq: "   << s.count_dequeue     << " (" << avg_deq << " ns), "
-        << "D-Key: " << s.count_decrease_key << " (" << avg_dk  << " ns), "
-        << "Reb: "   << s.count_rebuild     << " (" << avg_reb << " ns), "
-        << "Total Overhead: " << std::fixed << std::setprecision(3)
-        << (s.time_enqueue + s.time_dequeue + s.time_rebuild + s.time_decrease_key) / 1e6 << " ms"
-        << "\033[0m\n"
-        << "  \033[2mWaste     -> "
-        << "Stale Pops: "    << s.count_stale_pops   << ", "
-        << "Update Pushes: " << s.count_update_pushes << ", "
-        << "Wasted Time: "   << std::fixed << std::setprecision(3) << wasted_ms << " ms"
-        << "\033[0m\n"
-        << "  \033[2mInternal  -> "
-        << "H-Min Scans: "   << s.total_hmin_scans << ", "
-        << "Bucket Allocs: " << s.total_secondary_bucket_allocs
-        << "\033[0m\n";
+    // Main result line
+    out << BOLD "  " << std::left << std::setw(48) << r.description << RESET
+        << std::right
+        << YELLOW << std::setw(9)  << s.solution_cost << RESET
+        << GREEN  << std::setw(13) << fmt_int(s.nodes_expanded) << RESET
+        << std::setw(12) << fmt_ms(s.total_time_ms)
+        << std::setw(10) << s.memory_peak_kb
+        << "\n";
+
+    // Queue timing (dim)
+    out << DIM "    "
+        << "enq "  << fmt_int(s.count_enqueue)      << " @ " << fmt_ns(avg_enq) << "  "
+        << "deq "  << fmt_int(s.count_dequeue)      << " @ " << fmt_ns(avg_deq) << "  "
+        << "dkey " << fmt_int(s.count_decrease_key) << " @ " << fmt_ns(avg_dk)  << "  "
+        << "reb "  << fmt_int(s.count_rebuild)      << " @ " << fmt_ns(avg_reb) << "  "
+        << "|  overhead " << fmt_ms(overhead) << " ms"
+        << RESET "\n";
+
+    // Stale / internal (dim, only printed when non-zero)
+    bool has_waste    = s.count_stale_pops > 0 || s.count_update_pushes > 0;
+    bool has_internal = s.total_hmin_scans > 0 || s.total_secondary_bucket_allocs > 0;
+    if (has_waste || has_internal) {
+        out << DIM "    ";
+        if (has_waste) {
+            out << "stale " << fmt_int(s.count_stale_pops) << "  "
+                << "repush " << fmt_int(s.count_update_pushes) << "  "
+                << "wasted " << fmt_ms(wasted_ms) << " ms";
+        }
+        if (has_waste && has_internal) out << "  |  ";
+        if (has_internal) {
+            out << "hmin-scans " << fmt_int(s.total_hmin_scans) << "  "
+                << "bkt-alloc " << fmt_int(s.total_secondary_bucket_allocs);
+        }
+        out << RESET "\n";
+    }
+
+    // Hardware/software perf counters (dim, only printed when available)
+    bool has_perf = s.perf_llc_refs > 0 || s.perf_branch_misses > 0
+                 || s.perf_cycles > 0    || s.perf_faults_minor > 0 || s.perf_faults_major > 0;
+    if (has_perf) {
+        std::ostringstream perf_line;
+        bool need_sep = false;
+        auto sep = [&] { if (need_sep) perf_line << "  |  "; need_sep = true; };
+
+        perf_line << "    ";
+        if (s.perf_llc_refs > 0) {
+            std::ostringstream pct;
+            pct << std::fixed << std::setprecision(1)
+                << (100.0 * s.perf_llc_misses / s.perf_llc_refs) << "%";
+            sep();
+            perf_line << "LLC  "
+                      << fmt_count(s.perf_llc_misses) << " miss / "
+                      << fmt_count(s.perf_llc_refs)   << " ref ("
+                      << pct.str() << ")";
+        }
+        if (s.perf_branches > 0) {
+            std::ostringstream pct;
+            pct << std::fixed << std::setprecision(1)
+                << (100.0 * s.perf_branch_misses / s.perf_branches) << "%";
+            sep();
+            perf_line << "br-miss  "
+                      << fmt_count(s.perf_branch_misses) << " / "
+                      << fmt_count(s.perf_branches)      << " ("
+                      << pct.str() << ")";
+        }
+        if (s.perf_faults_minor > 0 || s.perf_faults_major > 0) {
+            sep();
+            perf_line << "pg-flt  "
+                      << fmt_count(s.perf_faults_minor) << " min  "
+                      << fmt_count(s.perf_faults_major) << " maj";
+        }
+        if (s.perf_cycles > 0 && s.perf_instructions > 0) {
+            std::ostringstream ipc;
+            ipc << std::fixed << std::setprecision(2)
+                << (static_cast<double>(s.perf_instructions) / s.perf_cycles);
+            sep();
+            perf_line << "IPC " << ipc.str();
+        }
+        out << DIM << perf_line.str() << RESET "\n";
+    }
+
+    out << "\n";
 }
 
 // ─── Priority Calculators ─────────────────────────────────────────────────────
@@ -161,21 +381,56 @@ BenchmarkResult run_benchmark(Environment& env, Queue& queue, const std::string&
 
     std::atomic<bool> done(false);
     std::thread spinner_thread;
+    auto t0 = std::chrono::steady_clock::now();
+
     if (show_spinner) {
-        spinner_thread = std::thread([&]() {
-            const char frames[] = "|/-\\";
-            int i = 0;
+        // Truncate the description to fit cleanly on one line.
+        std::string short_desc = description.size() > 44
+            ? description.substr(0, 41) + "..."
+            : description;
+
+        spinner_thread = std::thread([&, short_desc]() {
+            const char* frames[] = {"|", "/", "-", "\\"};
+            int frame = 0;
+            int w = get_terminal_width();
+
             while (!done) {
-                std::cout << "\rRunning... " << frames[i++ % 4] << std::flush;
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                auto elapsed = std::chrono::duration<double>(
+                    std::chrono::steady_clock::now() - t0).count();
+
+                // Intentional unsynchronized read — display only, stale value is fine.
+                uint64_t expanded = stats.nodes_expanded;
+
+                std::ostringstream line;
+                line << "  [" << frames[frame++ % 4] << "]  "
+                     << std::left  << std::setw(46) << short_desc
+                     << std::right << std::setw(14) << fmt_int(expanded) << " nodes  "
+                     << std::fixed << std::setprecision(1) << elapsed << "s";
+
+                std::string s = "\r" + line.str();
+                // Pad to overwrite any leftover characters from a previous longer line.
+                int pad = w - static_cast<int>(s.size()) + 1;
+                if (pad > 0) s += std::string(pad, ' ');
+
+                std::cout << s << std::flush;
+                std::this_thread::sleep_for(std::chrono::milliseconds(80));
             }
-            std::cout << "\r" << std::string(20, ' ') << "\r";
+            // Erase the spinner line before the result is printed.
+            std::cout << "\r" << std::string(w, ' ') << "\r" << std::flush;
         });
     }
 
-    auto t0 = std::chrono::steady_clock::now();
+#ifdef __linux__
+    PerfCounters perf;
+    perf.reset_and_enable();
+#endif
+
     solver.solve();
     auto t1 = std::chrono::steady_clock::now();
+
+#ifdef __linux__
+    perf.disable_and_read(stats);
+#endif
 
     if (show_spinner) {
         done = true;
@@ -400,6 +655,7 @@ int main(int argc, char** argv) {
         ("msa-betas",           "CSV of MSA beta values",                      cxxopts::value<std::string>()->default_value("1"))
         ("msa-ds",              "CSV of MSA D values",                         cxxopts::value<std::string>()->default_value("2"))
         ("num-msa",             "Number of MSA instances (max 6)",             cxxopts::value<int>()->default_value("6"))
+        ("capacity",            "Initial node pool capacity (grows as needed)", cxxopts::value<uint32_t>()->default_value("1000000"))
         ("non-heavy-heuristic", "Use unit-cost heuristic for heavy envs",      cxxopts::value<bool>()->default_value("false"))
         ("focal-w",             "Suboptimality bound for focal/anytime search", cxxopts::value<double>()->default_value("1.5"))
         ("use-h-max",           "Use h-max as bucket representative",          cxxopts::value<bool>()->default_value("false"))
@@ -478,116 +734,112 @@ int main(int argc, char** argv) {
     SweepParams msa_params     = make_params("msa");
 
     // ── Terminal output helpers ──────────────────────────────────────────────
-    int tw = get_terminal_width();
-    auto print_env_header = [&](const std::string& title) {
-        if (!file_output)
-            cfg.out << "\n\033[1m" << title << "\033[0m\n" << std::string(tw, '=') << "\n";
+    auto env_header = [&](const std::string& title, const std::string& sub = "") {
+        if (!file_output) print_env_header(cfg.out, title, sub);
     };
-    auto print_instance_header = [&](const std::string& label) {
+    auto instance_header = [&](const std::string& label) {
         if (!file_output) {
-            cfg.out << "\033[1;34m" << label << "\033[0m\n";
+            cfg.out << BOLD "  " << label << RESET "\n";
             print_header(cfg.out);
         }
     };
-    auto print_instance_footer = [&]() {
+    auto instance_footer = [&]() {
         if (!file_output) cfg.out << "\n";
     };
 
     // ── Environment loop ─────────────────────────────────────────────────────
-    int num_grid    = args["num-grid"].as<int>();
-    int num_pancake = args["num-pancake"].as<int>();
-    int num_msa     = args["num-msa"].as<int>();
-    bool heavy_heuristic = !args["non-heavy-heuristic"].as<bool>();
+    int      num_grid        = args["num-grid"].as<int>();
+    int      num_pancake     = args["num-pancake"].as<int>();
+    int      num_msa         = args["num-msa"].as<int>();
+    bool     heavy_heuristic = !args["non-heavy-heuristic"].as<bool>();
+    uint32_t capacity        = args["capacity"].as<uint32_t>();
 
     for (const auto& env_name : parse_list<std::string>(args["environments"].as<std::string>())) {
 
         if (env_name == "grid") {
-            print_env_header("Grid Environment (" + std::to_string(args["grid-width"].as<int>())
-                           + "x" + std::to_string(args["grid-height"].as<int>()) + ")");
+            env_header("Grid", std::to_string(args["grid-width"].as<int>()) + "×" + std::to_string(args["grid-height"].as<int>()));
             for (int i = 0; i < num_grid; ++i) {
-                print_instance_header("Running instance #" + std::to_string(i));
+                instance_header("Instance #" + std::to_string(i));
                 GridEnvironment env(args["grid-width"].as<int>(), args["grid-height"].as<int>(), 1 + i);
                 run_sweep(env, groups, grid_params, cfg, env_name, i);
-                print_instance_footer();
+                instance_footer();
             }
 
         } else if (env_name == "random_grid") {
-            print_env_header("Random Grid Environment (" + std::to_string(args["grid-width"].as<int>())
-                           + "x" + std::to_string(args["grid-height"].as<int>()) + ")");
+            env_header("Random Grid", std::to_string(args["grid-width"].as<int>()) + "×" + std::to_string(args["grid-height"].as<int>()));
             for (int i = 0; i < num_grid; ++i) {
-                print_instance_header("Running instance #" + std::to_string(i));
+                instance_header("Instance #" + std::to_string(i));
                 RandomGridEnvironment env(args["grid-width"].as<int>(), args["grid-height"].as<int>(),
                                           args["grid-max-edge-cost"].as<uint32_t>(), 42 + i);
                 run_sweep(env, groups, grid_params, cfg, env_name, i);
-                print_instance_footer();
+                instance_footer();
             }
 
         } else if (env_name == "pancake") {
-            print_env_header("Pancake Puzzle (" + std::to_string(PancakeEnvironment::N) + " pancakes)");
+            env_header("Pancake Puzzle", std::to_string(PancakeEnvironment::N) + " pancakes");
             for (int i = 0; i < num_pancake; ++i) {
-                print_instance_header("Running instance #" + std::to_string(i));
-                PancakeEnvironment env(42 + i, 50000000);
+                instance_header("Instance #" + std::to_string(i));
+                PancakeEnvironment env(42 + i, capacity);
                 env.generate_start_node();
                 run_sweep(env, groups, pancake_params, cfg, env_name, i);
-                print_instance_footer();
+                instance_footer();
             }
 
         } else if (env_name == "heavy_pancake") {
-            print_env_header("Heavy Pancake Puzzle (" + std::to_string(HeavyPancakeEnvironment::N) + " pancakes)");
+            env_header("Heavy Pancake Puzzle", std::to_string(HeavyPancakeEnvironment::N) + " pancakes");
             for (int i = 0; i < num_pancake; ++i) {
-                print_instance_header("Running instance #" + std::to_string(i));
-                HeavyPancakeEnvironment env(42 + i, 50000000);
+                instance_header("Instance #" + std::to_string(i));
+                HeavyPancakeEnvironment env(42 + i, capacity);
                 env.set_heavy_heuristic(heavy_heuristic);
                 env.generate_start_node();
                 run_sweep(env, groups, pancake_params, cfg, env_name, i);
-                print_instance_footer();
+                instance_footer();
             }
 
         } else if (env_name == "korf100") {
-            print_env_header("Sliding Tile Puzzle (Korf100)");
+            env_header("Sliding Tile Puzzle", "Korf100");
             for (int idx : parse_range(args["korf"].as<std::string>())) {
-                print_instance_header("Running puzzle #" + std::to_string(idx));
+                instance_header("Puzzle #" + std::to_string(idx));
                 try {
-                    SlidingTileEnvironment env(idx, "korf100.txt", 20000000);
+                    SlidingTileEnvironment env(idx, "korf100.txt", capacity);
                     run_sweep(env, groups, korf_params, cfg, env_name, idx);
                 } catch (const std::exception& e) {
-                    std::cerr << "Error setting up SlidingTileEnvironment for puzzle #" << idx << ": " << e.what() << "\n";
+                    std::cerr << "korf100 puzzle #" << idx << ": " << e.what() << "\n";
                 }
-                print_instance_footer();
+                instance_footer();
             }
 
         } else if (env_name == "heavy_korf100") {
-            print_env_header("Heavy Sliding Tile Puzzle (Korf100)");
+            env_header("Heavy Sliding Tile Puzzle", "Korf100");
             for (int idx : parse_range(args["korf"].as<std::string>())) {
-                print_instance_header("Running puzzle #" + std::to_string(idx));
+                instance_header("Puzzle #" + std::to_string(idx));
                 try {
-                    HeavySlidingTileEnvironment env(idx, "korf100.txt", 20000000);
+                    HeavySlidingTileEnvironment env(idx, "korf100.txt", capacity);
                     env.set_heavy_heuristic(heavy_heuristic);
                     run_sweep(env, groups, korf_params, cfg, env_name, idx);
                 } catch (const std::exception& e) {
-                    std::cerr << "Error setting up HeavySlidingTileEnvironment for puzzle #" << idx << ": " << e.what() << "\n";
+                    std::cerr << "heavy_korf100 puzzle #" << idx << ": " << e.what() << "\n";
                 }
-                print_instance_footer();
+                instance_footer();
             }
 
         } else if (env_name == "msa" || env_name == "msa5") {
-            print_env_header("Multiple Sequence Alignment (5 of 6 EF-TU/EF-1a Proteins)");
+            env_header("Multiple Sequence Alignment", "5-of-6 EF-TU/EF-1α proteins");
             for (int i = 0; i < std::min(num_msa, 6); ++i) {
-                print_instance_header("Running instance #" + std::to_string(i)
-                                    + " (excluding sequence " + std::to_string(i) + ")");
+                instance_header("Instance #" + std::to_string(i) + "  (excluding seq " + std::to_string(i) + ")");
                 std::vector<std::string> seqs;
                 for (int j = 0; j < 6; ++j)
                     if (j != i) seqs.push_back(kMSASequences[j]);
-                MSA5Environment env(seqs, 50000000);
+                MSA5Environment env(seqs, capacity);
                 run_sweep(env, groups, msa_params, cfg, env_name, i);
-                print_instance_footer();
+                instance_footer();
             }
 
         } else if (env_name == "msa6") {
-            print_env_header("Multiple Sequence Alignment (All 6 EF-TU/EF-1a Proteins)");
-            MSA6Environment env(kMSASequences, 50000000);
+            env_header("Multiple Sequence Alignment", "All 6 EF-TU/EF-1α proteins");
+            MSA6Environment env(kMSASequences, capacity);
             run_sweep(env, groups, msa_params, cfg, env_name, 0);
-            print_instance_footer();
+            instance_footer();
         }
     }
 

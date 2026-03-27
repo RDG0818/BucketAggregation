@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 #include <cstdint>
-#include <type_traits> // For std::void_t
+#include <type_traits>
 #include <iomanip>
 #include <map>
 
@@ -62,7 +62,7 @@ struct QueueDetailedMetrics {
 struct SearchStats {
   double time_enqueue = 0;
   double time_dequeue = 0;
-  double time_rebuild = 0; // For ANA* heap rebuilding
+  double time_rebuild = 0; // For ANA* and DPS heap rebuilding
   double time_decrease_key = 0;
   
   uint64_t count_enqueue = 0;
@@ -84,6 +84,18 @@ struct SearchStats {
   size_t solution_length = 0;
   
   long memory_peak_kb = 0;
+
+  // Hardware performance counters (populated on Linux via perf_event_open;
+  // zero on platforms where perf is unavailable or unpermitted).
+  uint64_t perf_llc_misses    = 0;
+  uint64_t perf_llc_refs      = 0;
+  uint64_t perf_branch_misses = 0;
+  uint64_t perf_branches      = 0;
+  uint64_t perf_cycles        = 0;
+  uint64_t perf_instructions  = 0;
+  // Software counters — available regardless of perf_event_paranoid level.
+  uint64_t perf_faults_minor  = 0;
+  uint64_t perf_faults_major  = 0;
 
   void reset() { *this = SearchStats(); }
 };
@@ -201,41 +213,20 @@ public:
     return handle;
   }
 
-  uint32_t top() { return queue_.top(); }
-  auto top_priority() { return queue_.top_priority(); }
+  uint32_t top() const noexcept { return queue_.top(); }
+  auto top_priority() const noexcept { return queue_.top_priority(); }
   void remove(uint32_t id) { queue_.remove(id); }
   void change_priority(uint32_t id, auto p, uint32_t h = 0) { queue_.change_priority(id, p, h); }
   bool contains(uint32_t id) const { return queue_.contains(id); }
-  
-  uint32_t get_f_min() const { return queue_.get_f_min(); }
-  uint32_t get_f_min_raw() const { 
+
+  uint32_t get_f_min_raw() const {
     if constexpr (has_get_f_min_raw<QueueType>::value) {
-      return queue_.get_f_min_raw(); 
+      return queue_.get_f_min_raw();
     }
     return INF_COST;
   }
-  uint32_t get_alpha() const { return queue_.get_alpha(); }
-  uint32_t get_beta() const { return queue_.get_beta(); }
-  
-  uint32_t pop_from(uint32_t f) { 
-    auto start = std::chrono::steady_clock::now();
-    uint32_t handle = queue_.pop_from(f);
-    auto end = std::chrono::steady_clock::now();
-    stats_.time_dequeue += std::chrono::duration<double, std::nano>(end - start).count();
-    stats_.count_dequeue++;
 
-    if constexpr (has_get_hmin_scans<QueueType>::value) {
-      stats_.total_hmin_scans = queue_.get_hmin_scans();
-    }
-    if constexpr (has_get_secondary_bucket_allocs<QueueType>::value) {
-      stats_.total_secondary_bucket_allocs = queue_.get_secondary_bucket_allocs();
-    }
-    return handle; 
-  }
-  size_t get_node_count(uint32_t f) const { return queue_.get_node_count(f); }
-  uint32_t get_h_min(uint32_t f) const { return queue_.get_h_min(f); }
-
-  // ANA* Rebuild support
+  // Rebuild support for ANA* and DPS
   template<typename Func>
   void rebuild(Func calculate_priority) {
     if constexpr (has_rebuild<QueueType, Func>::value) {
@@ -280,14 +271,14 @@ public:
   }
 
   template<typename Validator>
-  utils::QueueDetailedMetrics get_detailed_metrics(Validator&& v) {
+  utils::QueueDetailedMetrics get_detailed_metrics(Validator&& v) const {
     if constexpr (has_get_detailed_metrics_v<QueueType, Validator>::value) {
       return queue_.get_detailed_metrics(std::forward<Validator>(v));
     }
     return utils::QueueDetailedMetrics();
   }
 
-  utils::QueueDetailedMetrics get_detailed_metrics() {
+  utils::QueueDetailedMetrics get_detailed_metrics() const {
     if constexpr (has_get_detailed_metrics<QueueType>::value) {
       return queue_.get_detailed_metrics();
     }

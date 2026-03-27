@@ -1,122 +1,185 @@
-# Extensions of a Bucket-Based Priority Queue 
+# Bucket Aggregation in Bucket-Based Priority Queues for Heuristic Search
 
-This project is a C++ reimplementation and extension of [A Bucket-Based Priority Queue for Bounded-Suboptimal and Anytime A* Search](https://ojs.aaai.org/index.php/SOCS/article/view/35976) by Fereday and Hansen. 
+Research implementation accompanying the paper **"Bucket Aggregation in Bucket-Based Priority Queues for Heuristic Search"** (SoCS 2026), extending [Fereday & Hansen (SoCS 2024)](https://ojs.aaai.org/index.php/SOCS/article/view/35976).
 
-The focus of this repository is to demonstrate the performance advantages of bucket-based data structures in heuristic search, specifically for algorithms that require frequent reordering of the open list (such as ANA*). This project also extends the bucket heap to support secondary bucket aggregation and real-valued weights, improving a weakness of the data structure in environments with sparse h-costs. 
+## The Paper
 
-## Overview
+Bucket-based priority queues are highly efficient open lists for heuristic search, but their performance degrades when the h-cost distribution is **sparse** — that is, when nodes cluster at a small number of distinct h-values spread over a wide range. This leads to many empty secondary buckets, wasting memory and causing cache misses during reordering.
 
-This repository implements multiple different search algorithms and data structures for comparison on three common search environments.
+This paper introduces **bucket aggregation**: grouping h-costs into intervals of width α so that node $n$ is placed in secondary bucket $\lfloor h(n)/\alpha \rfloor$ instead of bucket $h(n)$. A corresponding parameter β aggregates primary (f-cost) buckets.
 
-### Algorithms
+> **Suggestion for diagram here:** A side-by-side illustration showing sparse h-buckets (α=1) vs. aggregated h-buckets (α>1) for the same node set, highlighting the reduction in empty buckets.
 
-#### A\* (`include/algorithms/a_star.h`):
+### Aggregation and Correctness
 
-A standard best-first search algorithm designed to find the optimal path from a start node to a goal node. Expands nodes in order of $f(n)=g(n)+h(n)$, ensuring that the first time a goal is expanded, the path found is optimal.
+For **A\*** (optimal search), using the lower bound of each bucket interval as the h-representative preserves admissibility:
 
-#### Anytime A\* (`include/algorithms/anytime_a_star.h`): 
+$$h^{(b)}(n) = \lfloor h(n)/\alpha \rfloor \cdot \alpha \leq h(n)$$
 
-An anytime variant that quickly finds a suboptimal solution and iteratively improves it. Relies on a $w$-weighted heuristic $f(n)=g(n)+w⋅h(n)$. Once an initial solution is found, it uses the "incumbent" (the best solution found so far) to prune the search space.
+For **ANA\*** and **DPS** (anytime search), using the upper bound of the interval as the h-representative:
 
-#### Anytime Non-parametric A\* (`include/algorithms/ana_star.cpp`):
+$$h^{(b)}_{\max}(n) = (\lfloor h(n)/\alpha \rfloor + 1) \cdot \alpha - 1$$
 
-An anytime search algorithm that adapts its greediness dynamically without requiring a fixed weight parameter. Instead of $f(n)$, ANA* expands nodes that maximize the probability of improving the current solution, defined by the priority function:
+preserves the relative ordering of the priority function, preventing the queue from silently misordering nodes during rebuilds.
 
-$$E(n)=\frac{G_{upper}​−g(n)}{h(n)}​$$
+### Key Results
 
-This effectively prioritizes nodes that have the greatest potential to reduce the current best cost ($G_{upper}$​).
+Aggregation delivers substantial cache efficiency gains on sparse-h domains:
 
-### Data Structures
+| Domain | Metric | Baseline | α=16 |
+|---|---|---|---|
+| Non-uniform grid | Page faults | 234K | 8K |
+| Non-uniform grid | LLC misses | 109M | 40M |
+| Heavy sliding tile | LLC misses | — | ~3× reduction |
 
-#### Binary Heap (`include/queues/binary_heap.h`):
+---
 
-A standard implicit binary heap backed by a `std::vector` and managed using C++ STL heap algorithms (`std::push_heap`, `std::pop_heap`, etc.). Unlike `std::priority_queue`, this implementation exposes the underlying container, enabling an explicit $O(N)$ `rebuild()` method. This feature allows for efficient bulk updates of all element priorities, which is critical for the pruning and reordering steps required by ANA*.
+## Build & Run
 
-#### Indexed D-ary Heap (`include/queues/indexed_d_ary_heap.h`):
+```bash
+git submodule update --init --recursive   # First-time setup
+make                                       # Build (Release, -O3 -march=native -flto)
+make rebuild                               # Clean + rebuild
+./build/main                              # Full benchmark suite
+./build/tests                             # Unit tests
+```
 
-#### Bucket Queue (`include/queues/bucket_queue.h`):
+**Memory note:** On memory-constrained systems, use `--capacity N` to cap the node pool size (default: 1,000,000). The pool grows dynamically as needed.
 
-A priority queue specialized for integer priorities, implemented as a dynamic `std::vector` of buckets (nested vectors). It offers O(1) push operations by using the priority value directly as an index. Pop operations track a min_priority index to lazily scan for the next non-empty bucket. Tie-breaking within buckets is handled in LIFO (Last-In-First-Out) order. While highly efficient for dense, small integer ranges (like those in the Grid Environment), it handles larger priorities by dynamically resizing, though performance may degrade if costs are extremely sparse.
+```bash
+./build/main --capacity 500000
+```
 
-#### Two-Level Bucket Queue (`include/queues/two_level_bucket_queue.h`):
+### Hardware Performance Counters
 
-#### Bucket Heap (`include/queues/bucket_heap.h`):
+On Linux, the benchmark runner uses `perf_event_open` to collect per-benchmark hardware and software counters, displayed as a detail line under each result:
 
-#### Bucket Heap with Aggregation (`include/queues/bucket_heap.h`, with `alpha`/`beta` > 1):
+```
+  ANA* with BucketHeap (a=16, D=2)          100    1,234,567       42.318      1024
+    enq 1,234,567 @ 45ns  deq 1,234,567 @ 38ns  ...  |  overhead 0.12 ms
+    LLC  40.1M miss / 109.2M ref (36.7%)  |  br-miss  1.2M / 45.6M (2.7%)  |  pg-flt  8.0K min  234 maj  |  IPC 2.31
+```
 
+| Counter | Type | Requires paranoid ≤ 1? |
+|---|---|---|
+| LLC miss rate | Hardware | Yes |
+| Branch miss rate | Hardware | Yes |
+| IPC (instructions/cycle) | Hardware | Yes |
+| Page faults (minor) | Software | No |
+| Page faults (major) | Software | No |
 
-### Environments
+Page faults are available unconditionally. Hardware counters require `kernel.perf_event_paranoid <= 1`:
 
-Implementation of three standard search environments. `phmap::flat_hash_map` from [parallel-hashmap](https://github.com/greg7mdp/parallel-hashmap) is used for state hashing on the sliding tile and pancake puzzles.
+```bash
+sudo sysctl kernel.perf_event_paranoid=1
+```
 
-#### Grid Environment (`include/environments/environment.h` and `src/grid_environment.cpp`):
+If a counter is unavailable its value is zero and it is omitted from the display. All eight counters (`perf_llc_misses`, `perf_llc_refs`, `perf_branch_misses`, `perf_branches`, `perf_cycles`, `perf_instructions`, `perf_faults_minor`, `perf_faults_major`) are always present as columns in CSV output.
 
-A 4-connected implicit graph where the state space consists of cells in a 2D grid of size $W \times H$. Movement is restrict to the cardinal directions, and each cell has an integer traversal cost sampled from $U\{1, 10\}$. Additionally, 20% of the cells are non-traversable. The heuristic used is the Manhattan Distance:
+---
 
-$$h(n) = |x_{goal} - x_n| + |y_{goal} - y_n|$$
+## Architecture
 
-#### Sliding Tile Puzzle (`include/environments/environment.h` and `src/sliding_tile_environment.cpp`):
+### Priority Queue Hierarchy
 
-A 15-puzzle ($4 \times 4$ grid) focused on moving tiles into a specific goal configuration. The heuristic used is the Manhattan Distance summed across all times relative to their target positions in the goal state. 
+All queues share a common interface (`push`, `pop`, `empty`, `clear`, `rebuild`) and are templated on environment and algorithm type.
+
+| Queue | File | Description |
+|---|---|---|
+| `BinaryHeap` | `binary_heap.h` | STL-based baseline; O(log n) push/pop; O(n) rebuild |
+| `BucketQueue` | `bucket_queue.h` | Integer-indexed; O(1) amortized push/pop; LIFO within buckets; A* only |
+| `TwoLevelBucketQueue` | `two_level_bucket_queue.h` | Primary buckets by f, secondary by h; pool-allocated 512-byte blocks |
+| `IndexedDaryHeap` | `indexed_d_ary_heap.h` | D-ary heap with O(1) decrease-key via id→index map; O(n) rebuild |
+| `BucketHeap` | `bucket_heap.h` | **Hybrid:** `TwoLevelBucketQueue` stores nodes, `IndexedDaryHeap` tracks non-empty f-buckets |
+
+> **Suggestion for diagram here:** A structural diagram of `BucketHeap` showing the two-layer decomposition — the `IndexedDaryHeap` on top tracking f-bucket indices with computed priorities, feeding into the `TwoLevelBucketQueue` with its f→h→block chain.
+
+#### TwoLevelBucketQueue
+
+The core node-storage layer. Each primary bucket (indexed by $\lfloor f/\beta \rfloor$) holds a vector of secondary buckets (indexed by $\lfloor h/\alpha \rfloor$). Secondary buckets store node IDs in 512-byte blocks (126 IDs each), managed by a slab allocator (`BlockPool`) that recycles blocks via a free list to amortize allocation cost.
+
+```
+f-buckets:  [f=10] [f=11] [f=12] ...
+                |
+           h-buckets:  [h=0] [h=1] [h=2] ...
+                                |
+                          Block -> Block -> ...
+                          [id id id ...]
+```
+
+Pop is O(1) amortized: a lazy cursor advances past empty f-buckets; within each f-bucket, `h_min` tracks the minimum non-empty secondary bucket.
+
+#### BucketHeap
+
+Wraps `TwoLevelBucketQueue` with an `IndexedDaryHeap` that tracks which primary f-buckets are non-empty. The heap is keyed by f-bucket index with a **priority computed by a `PriorityCalculator` functor** — this is the injection point for algorithm-specific weighting (e.g., ANA*'s $E(n)$ or DPS's $U_D(n)$).
+
+`rebuild()` recomputes all heap priorities in O(n) without touching the bucket structure, making it highly efficient for algorithms that reorder the open list frequently.
+
+#### Aggregation Parameters
+
+Both queues accept `alpha` (secondary bucket width) and `beta` (primary bucket width):
+
+- **α=1, β=1**: Standard bucket heap (no aggregation)
+- **α>1**: Multiple h-values share one secondary bucket → fewer buckets, better cache locality
+- **β>1**: Multiple f-values share one primary bucket → reduces primary heap size
+
+The `use_h_max` flag on `BucketHeap` switches the h-representative from lower bound (safe for A*) to upper bound (needed for ANA*/DPS correctness under aggregation).
+
+---
+
+### Search Algorithms
+
+All algorithms are templated on `<Environment, Queue>`.
+
+| Algorithm | File | Priority | Use case |
+|---|---|---|---|
+| A* | `a_star.h` | $f(n) = g(n) + h(n)$ | Optimal search |
+| Anytime A* | `anytime_a_star.h` | $f(n) = g(n) + w \cdot h(n)$ | Fast suboptimal + iterative improvement |
+| ANA* | `ana_star.h` | $E(n) = (G_{upper} - g(n))\, /\, h(n)$ | Anytime; no fixed weight; auto-adjusts greediness |
+| DPS | `dps.h` | $U_D(n) = (\varepsilon \cdot f_{min} - g(n))\, /\, h(n)$ | Dynamic Potential Search; bounded suboptimal |
+
+**ANA\*** and **DPS** call `rebuild()` every time they find a new incumbent or detect that $f_{min}$ has increased. This is the primary motivation for `BucketHeap`'s O(n) rebuild — standard heaps make this O(n log n).
+
+---
+
+### Search Environments
+
+| Environment | States | Heuristic | Notes |
+|---|---|---|---|
+| Grid (uniform) | $W \times H$ grid | Manhattan distance | 4-connected, 20% obstacles, costs in $U\{1,10\}$ |
+| Grid (random/non-uniform) | $W \times H$ grid | Manhattan distance | Sparse h-distribution; primary aggregation target |
+| Sliding Tile (standard) | Korf-100 instances | Manhattan distance | 15-puzzle ($4 \times 4$) |
+| Sliding Tile (heavy) | Korf-100 instances | Weighted Manhattan | Edge cost = tile number; large, sparse h-values |
+| Pancake (standard) | $N=48$ permutations | Gap heuristic | Classic combinatorial; $N-1$ successors |
+| Pancake (heavy) | $N=48$ permutations | Weighted gap | Edge cost = max pancake flipped; amplifies sparsity |
+| MSA-5 / MSA-6 | Sequence alignment | Gap-based | Multiple sequence alignment; 5 or 6 sequences |
+
 <p align="center">
-<img src="./images/15_puzzle.png" width="30%" />
-</p>
-To solve the puzzle, the numbers must be rearranged into numerical order from left to right, top to bottom.
-
-#### Pancake Puzzle (`include/environments/environment.h` and `src/pancake_environment.cpp`):
-
-A classic combinatorial search problem involving the sorting of a stack of $N$ pancakes. A state is a permutation of the numbers 1 through $N$. A successor is generated by "flipping" the top $k$ pancakes (where $2\leq k \leq N$), which reverses the order of the first $k$ elements in the array. The heuristic used is the Gap Heuristic, which counts the number of non-adjacent values in the current stack. For any index $i$, a gap exists if $|stack[i] - stack[i + 1]| > 1$. 
-
-<p align="center">
-<img src="./images/pancake.svg" width="50%" />
+<img src="./images/15_puzzle.png" width="28%" />
+&nbsp;&nbsp;&nbsp;&nbsp;
+<img src="./images/pancake.svg" width="38%" />
 </p>
 
-## Design and Implementation Details
+`phmap::flat_hash_map` from [parallel-hashmap](https://github.com/greg7mdp/parallel-hashmap) is used for state hashing on sliding tile and pancake.
 
-## Results
+---
 
-## Installation
+### Node Management
 
-### Prerequisites
+`NodePool` (`include/environments/node.h`) manages all per-node state for a search. It uses **per-search iteration counters** rather than clearing arrays between runs — `is_generated()` and `is_closed()` compare against the current iteration ID, making `reset_search()` O(1) regardless of pool size.
 
-- C++20 compatible compiler (GCC/Clang/MSVC)
+---
 
-- CMake (3.16 or higher)
+## Implementation Notes
 
-### Build
+- **`noexcept`** is applied throughout non-allocating methods. This is critical for `std::vector` to use move semantics during reallocation rather than copies.
+- **Floyd's O(n) heapify** is used in `IndexedDaryHeap::rebuild()` (bottom-up, starting from the last internal node).
+- **`[[unlikely]]`** annotates the `f_b < f_offset_` front-insert path in `TwoLevelBucketQueue`, which should never trigger for A*-family algorithms where f is non-decreasing.
+- **`is_bucket_heap<T>` trait** detects `BucketHeap` (and `ProfiledQueue<BucketHeap>`) at compile time, allowing ANA* and DPS to select the native O(n) rebuild path vs. a generic fallback.
+- **`ProfiledQueue<Q>`** wraps any queue with timing instrumentation (enqueue, dequeue, rebuild, decrease-key latencies) without affecting the queue's logic.
 
-```bash
-git submodule update --init --recursive
-make
-```
-
-### Benchmark
-
-Note: depending on your CPU, the benchmark could take anywhere from several seconds to several minutes to finish.
-
-```bash
-./build/main
-```
-
-### Tests (Optional)
-
-```bash
-./build/tests
-```
-
-## Future Work
-
-- Hybrid Expansion Strategy Demo
-
-Bucket Hash Table (plus some faster implementation of a hash table) for faster hashing
-
-Profile-Guided Optimization
-
-TODO: 
-- Add non lazy decrease key operation 
-- Implement "ordered set" from Fereday repo
-- Add other optimizations from Fereday repo
-
+---
 
 ## License
-This project is licensed under the MIT License - see the `License.md` file for details.
+
+MIT License — see `License.md`.
