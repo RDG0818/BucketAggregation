@@ -11,7 +11,6 @@ make clean    # Clean build artifacts
 make rebuild  # Clean + rebuild
 
 ./build/main   # Run full benchmark suite
-./build/tests  # Run all unit tests
 ```
 
 Build uses Release mode with `-O3 -march=native -flto -g -fno-omit-frame-pointer`. C++20 required.
