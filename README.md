@@ -4,19 +4,19 @@ Research implementation accompanying the paper **"Bucket Aggregation in Bucket-B
 
 ## The Paper
 
-Bucket-based priority queues are highly efficient open lists for heuristic search, but their performance degrades when the h-cost distribution is **sparse** — that is, when nodes cluster at a small number of distinct h-values spread over a wide range. This leads to many empty secondary buckets, wasting memory and causing cache misses during reordering.
+Bucket-based priority queues are highly efficient open lists for heuristic search, but their performance degrades when the h-cost distribution is sparse, or when nodes cluster at a small number of distinct h-values spread over a wide range. This leads to many empty secondary buckets, wasting memory and causing cache misses during reordering.
 
-This paper introduces **bucket aggregation**: grouping h-costs into intervals of width α so that node $n$ is placed in secondary bucket $\lfloor h(n)/\alpha \rfloor$ instead of bucket $h(n)$. A corresponding parameter β aggregates primary (f-cost) buckets.
+This paper introduces bucket aggregation: grouping h-costs into intervals of width α so that node $n$ is placed in secondary bucket $\lfloor h(n)/\alpha \rfloor$ instead of bucket $h(n)$. A corresponding parameter $\beta$ aggregates primary (f-cost) buckets.
 
 > **Suggestion for diagram here:** A side-by-side illustration showing sparse h-buckets (α=1) vs. aggregated h-buckets (α>1) for the same node set, highlighting the reduction in empty buckets.
 
 ### Aggregation and Correctness
 
-For **A\*** (optimal search), using the lower bound of each bucket interval as the h-representative preserves admissibility:
+For A\*, using the lower bound of each bucket interval as the $h$-representative preserves admissibility:
 
 $$h^{(b)}(n) = \lfloor h(n)/\alpha \rfloor \cdot \alpha \leq h(n)$$
 
-For **ANA\*** and **DPS** (anytime search), using the upper bound of the interval as the h-representative:
+For Anytime Nonparametric A\* (ANA\*) and Dynamic Potential Search (DPS), using the upper bound of the interval as the h-representative:
 
 $$h^{(b)}_{\max}(n) = (\lfloor h(n)/\alpha \rfloor + 1) \cdot \alpha - 1$$
 
@@ -111,7 +111,7 @@ Pop is O(1) amortized: a lazy cursor advances past empty f-buckets; within each 
 
 #### BucketHeap
 
-Wraps `TwoLevelBucketQueue` with an `IndexedDaryHeap` that tracks which primary f-buckets are non-empty. The heap is keyed by f-bucket index with a **priority computed by a `PriorityCalculator` functor** — this is the injection point for algorithm-specific weighting (e.g., ANA*'s $E(n)$ or DPS's $U_D(n)$).
+Wraps `TwoLevelBucketQueue` with an `IndexedDaryHeap` that tracks which primary f-buckets are non-empty. The heap is keyed by f-bucket index with a priority dependent on algorithm-specific weighting (e.g., ANA*'s $E(n)$ or DPS's $U_D(n)$).
 
 `rebuild()` recomputes all heap priorities in O(n) without touching the bucket structure, making it highly efficient for algorithms that reorder the open list frequently.
 

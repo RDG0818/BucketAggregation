@@ -1,0 +1,221 @@
+ANA* Binary Heap MSA
+
+ Performance counter stats for './build/main -e msa5 -l anastar_binary --msa-alphas 100 --msa-betas 1 --num-msa 1 -o performance_anastarbinary_msa.csv':
+
+   278,005,019,165      cycles:u                                                                (66.67%)
+   175,575,869,131      instructions:u                                                          (83.33%)
+    23,109,083,994      branches:u                                                              (83.33%)
+       109,553,093      branch-misses:u                                                         (83.33%)
+            11,621      page-faults:u
+     2,630,239,161      L1-dcache-load-misses:u                                                 (83.34%)
+     1,095,032,212      LLC-load-misses:u                                                       (83.33%)
+
+      59.364964890 seconds time elapsed
+
+      58.751928000 seconds user
+       0.160466000 seconds sys
+
+
+ANA* Bucket Heap MSA
+
+ Performance counter stats for './build/main -e msa5 -l anastar_bucket --num-msa 1 -o performance_anastar_msa.csv':
+
+   278,852,322,022      cycles:u                                                                (66.67%)
+   168,036,083,610      instructions:u                                                          (83.33%)
+    22,730,807,937      branches:u                                                              (83.33%)
+       142,518,058      branch-misses:u                                                         (83.33%)
+         1,246,011      page-faults:u
+     2,598,036,332      L1-dcache-load-misses:u                                                 (83.33%)
+     1,138,129,341      LLC-load-misses:u                                                       (83.34%)
+
+      60.609945130 seconds time elapsed
+
+      58.860811000 seconds user
+       1.272143000 seconds sys
+
+
+ANA* Aggregated Bucket Heap MSA
+
+ Performance counter stats for './build/main -e msa5 -l anastar_realbucket --msa-alphas 100 --msa-betas 1 --num-msa 1 -o performance_anastarreal_msa.csv':
+
+   233,326,570,154      cycles:u                                                                (66.67%)
+   162,162,138,615      instructions:u                                                          (83.34%)
+    21,489,930,246      branches:u                                                              (83.33%)
+        90,971,218      branch-misses:u                                                         (83.34%)
+            55,760      page-faults:u
+     2,015,022,224      L1-dcache-load-misses:u                                                 (83.33%)
+       948,634,528      LLC-load-misses:u                                                       (83.33%)
+
+      49.906227064 seconds time elapsed
+
+      49.317459000 seconds user
+       0.205017000 seconds sys
+
+
+A* Binary Heap MSA
+
+ Performance counter stats for './build/main -e msa5 -l astar_binary --msa-alphas 100 --msa-betas 1 --num-msa 1 -o performance_astarbinary_msa.csv':
+
+   195,947,664,351      cycles:u                                                                (66.67%)
+    79,833,772,955      instructions:u                                                          (83.33%)
+    10,593,406,304      branches:u                                                              (83.33%)
+       104,816,089      branch-misses:u                                                         (83.33%)
+            11,859      page-faults:u
+     2,015,962,448      L1-dcache-load-misses:u                                                 (83.34%)
+     1,030,494,267      LLC-load-misses:u                                                       (83.33%)
+
+      41.844697449 seconds time elapsed
+
+      41.366604000 seconds user
+       0.176260000 seconds sys
+
+
+A* Two Level Bucket Queue MSA
+
+ Performance counter stats for './build/main -e msa5 -l astar_agg_two_level --msa-alphas 1 --msa-betas 1 --num-msa 1 -o performance_astarbucket_msa.csv':
+
+   191,827,198,136      cycles:u                                                                (66.67%)
+    72,800,332,931      instructions:u                                                          (83.34%)
+    10,149,391,266      branches:u                                                              (83.33%)
+       107,929,752      branch-misses:u                                                         (83.34%)
+         1,392,964      page-faults:u
+     1,803,727,361      L1-dcache-load-misses:u                                                 (83.33%)
+     1,036,571,478      LLC-load-misses:u                                                       (83.34%)
+
+      42.269795466 seconds time elapsed
+
+      40.526252000 seconds user
+       1.405555000 seconds sys
+
+
+A* Aggregated Two Level Bucket Queue MSA
+
+ Performance counter stats for './build/main -e msa5 -l astar_agg_two_level --msa-alphas 100 --msa-betas 1 --num-msa 1 -o performance_astarbetterbucket_msa.csv':
+
+   168,784,756,973      cycles:u                                                                (66.67%)
+    71,119,934,388      instructions:u                                                          (83.34%)
+     9,819,434,161      branches:u                                                              (83.33%)
+        70,552,960      branch-misses:u                                                         (83.34%)
+            36,484      page-faults:u
+     1,630,902,375      L1-dcache-load-misses:u                                                 (83.33%)
+       942,214,208      LLC-load-misses:u                                                       (83.33%)
+
+      36.129542674 seconds time elapsed
+
+      35.682536000 seconds user
+       0.176292000 seconds sys
+
+
+A* Binary Heap Grid 
+
+ Performance counter stats for './build/main -e grid --grid-width 10000 --grid-height 10000 -l astar_binary --grid-alphas 100 --grid-betas 1 -o performance_astarbinary_grid.csv':
+
+    12,943,162,437      cycles:u                                                                (66.68%)
+    24,708,722,623      instructions:u                                                          (83.34%)
+     3,403,023,353      branches:u                                                              (83.33%)
+        57,039,141      branch-misses:u                                                         (83.33%)
+            10,803      page-faults:u
+   <not supported>      stalled-cycles-backend:u
+        69,169,975      L1-dcache-load-misses:u                                                 (83.33%)
+         8,251,568      LLC-load-misses:u                                                       (83.32%)
+
+       3.151473551 seconds time elapsed
+
+       2.911618000 seconds user
+       0.222866000 seconds sys
+
+
+A* Two Level Bucket Queue Grid 
+
+ Performance counter stats for './build/main -e grid --grid-width 10000 --grid-height 10000 -l astar_agg_two_level --grid-alphas 1 --grid-betas 1 -o performance_astarbucket_grid.csv':
+
+     8,111,486,601      cycles:u                                                                (66.66%)
+    14,805,826,537      instructions:u                                                          (83.33%)
+     2,287,207,015      branches:u                                                              (83.32%)
+        32,673,386      branch-misses:u                                                         (83.34%)
+             8,868      page-faults:u
+   <not supported>      stalled-cycles-backend:u
+        37,816,591      L1-dcache-load-misses:u                                                 (83.34%)
+         1,218,323      LLC-load-misses:u                                                       (83.34%)
+
+       2.053700301 seconds time elapsed
+
+       1.920417000 seconds user
+       0.119865000 seconds sys
+
+
+A* Aggregated Two Level Bucket Queue Grid
+
+ Performance counter stats for './build/main -e grid --grid-width 10000 --grid-height 10000 -l astar_agg_two_level --grid-alphas 100 --grid-betas 1 -o performance_astarbetterbucket_grid.csv':
+
+     7,884,368,130      cycles:u                                                                (66.63%)
+    14,475,211,334      instructions:u                                                          (83.32%)
+     2,213,037,630      branches:u                                                              (83.35%)
+        27,870,323      branch-misses:u                                                         (83.36%)
+             6,846      page-faults:u
+   <not supported>      stalled-cycles-backend:u
+        33,502,823      L1-dcache-load-misses:u                                                 (83.35%)
+         1,202,008      LLC-load-misses:u                                                       (83.31%)
+
+       2.019879687 seconds time elapsed
+
+       1.865146000 seconds user
+       0.143588000 seconds sys
+
+
+ANA* Aggregated Bucket Heap Grid
+
+ Performance counter stats for './build/main -e grid --grid-width 10000 --grid-height 10000 -l anastar_realbucket --grid-alphas 100 --grid-betas 1 -o performance_anastarbetterbucket_grid.csv':
+
+   221,398,707,764      cycles:u                                                                (66.67%)
+   349,098,222,849      instructions:u                                                          (83.33%)
+    60,928,425,321      branches:u                                                              (83.33%)
+       494,041,156      branch-misses:u                                                         (83.33%)
+             8,427      page-faults:u
+   <not supported>      stalled-cycles-backend:u
+       835,352,239      L1-dcache-load-misses:u                                                 (83.34%)
+        40,121,016      LLC-load-misses:u                                                       (83.33%)
+
+      47.227468235 seconds time elapsed
+
+      46.870167000 seconds user
+       0.128753000 seconds sys
+
+
+ANA* Bucket Heap Grid
+
+ Performance counter stats for './build/main -e grid --grid-width 10000 --grid-height 10000 -l anastar_bucket --grid-alphas 1 --grid-betas 1 -o performance_anastarbucket_grid.csv':
+
+   454,681,928,600      cycles:u                                                                (66.66%)
+   716,944,379,210      instructions:u                                                          (83.33%)
+   128,980,162,517      branches:u                                                              (83.34%)
+     1,629,479,396      branch-misses:u                                                         (83.33%)
+           234,324      page-faults:u
+   <not supported>      stalled-cycles-backend:u
+     3,267,573,864      L1-dcache-load-misses:u                                                 (83.33%)
+       109,365,755      LLC-load-misses:u                                                       (83.33%)
+
+      97.023529149 seconds time elapsed
+
+      96.087149000 seconds user
+       0.378109000 seconds sys
+
+
+ANA* Binary Heap Grid
+
+ Performance counter stats for './build/main -e grid --grid-width 10000 --grid-height 10000 -l anastar_binary --grid-alphas 1 --grid-betas 1 -o performance_anastarbinary_grid.csv':
+
+   639,629,438,020      cycles:u                                                                (66.67%)
+ 1,252,407,091,741      instructions:u                                                          (83.33%)
+   203,162,936,262      branches:u                                                              (83.33%)
+     1,474,039,403      branch-misses:u                                                         (83.34%)
+            10,672      page-faults:u
+   <not supported>      stalled-cycles-backend:u
+     1,773,669,600      L1-dcache-load-misses:u                                                 (83.33%)
+       120,154,272      LLC-load-misses:u                                                       (83.33%)
+
+     137.231909601 seconds time elapsed
+
+     136.384942000 seconds user
+       0.198311000 seconds sys
+      

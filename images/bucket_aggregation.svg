@@ -1,0 +1,82 @@
+<svg width="640" height="275" xmlns="http://www.w3.org/2000/svg" font-family="Arial, sans-serif">
+  <rect width="640" height="275" fill="white"/>
+
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#64748b"/>
+    </marker>
+  </defs>
+
+  <!-- ══ LEFT PANEL: α = 1 ══ -->
+  <text x="145" y="22" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e293b">α = 1  (no aggregation)</text>
+  <text x="145" y="40" text-anchor="middle" font-size="11" fill="#64748b">12 buckets — 5 non-empty</text>
+
+  <!-- Bucket frames: 16px wide, pitch 18px, y=55..215 -->
+  <rect x="30"  y="55" width="16" height="150" rx="1" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+  <rect x="48"  y="55" width="16" height="150" rx="1" fill="#dbeafe" stroke="#93c5fd" stroke-width="1"/>
+  <circle cx="56" cy="197" r="5" fill="#1d4ed8"/>
+  <rect x="66"  y="55" width="16" height="150" rx="1" fill="#dbeafe" stroke="#93c5fd" stroke-width="1"/>
+  <circle cx="74" cy="197" r="5" fill="#1d4ed8"/>
+  <circle cx="74" cy="185" r="5" fill="#1d4ed8"/>
+  <rect x="84"  y="55" width="16" height="150" rx="1" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+  <rect x="102" y="55" width="16" height="150" rx="1" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+  <rect x="120" y="55" width="16" height="150" rx="1" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+  <rect x="138" y="55" width="16" height="150" rx="1" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+  <rect x="156" y="55" width="16" height="150" rx="1" fill="#dbeafe" stroke="#93c5fd" stroke-width="1"/>
+  <circle cx="164" cy="197" r="5" fill="#1d4ed8"/>
+  <rect x="174" y="55" width="16" height="150" rx="1" fill="#dbeafe" stroke="#93c5fd" stroke-width="1"/>
+  <circle cx="182" cy="197" r="5" fill="#1d4ed8"/>
+  <circle cx="182" cy="185" r="5" fill="#1d4ed8"/>
+  <rect x="192" y="55" width="16" height="150" rx="1" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+  <rect x="210" y="55" width="16" height="150" rx="1" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+  <rect x="228" y="55" width="16" height="150" rx="1" fill="#dbeafe" stroke="#93c5fd" stroke-width="1"/>
+  <circle cx="236" cy="197" r="5" fill="#1d4ed8"/>
+
+  <!-- x-axis -->
+  <line x1="30" y1="208" x2="246" y2="208" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="30"  y="221" text-anchor="middle" font-size="10" fill="#94a3b8">0</text>
+  <text x="236" y="221" text-anchor="middle" font-size="10" fill="#94a3b8">11</text>
+  <text x="138" y="221" text-anchor="middle" font-size="10" fill="#94a3b8">h</text>
+
+  <text x="145" y="248" text-anchor="middle" font-size="12" font-weight="bold" fill="#dc2626">7 empty buckets</text>
+
+  <!-- ══ SEPARATOR + ARROW ══ -->
+  <line x1="315" y1="45" x2="315" y2="265" stroke="#e2e8f0" stroke-width="1.5" stroke-dasharray="5,4"/>
+  <line x1="262" y1="130" x2="352" y2="130" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ══ RIGHT PANEL: α = 3 ══ -->
+  <text x="505" y="22" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e293b">α = 3  (aggregated)</text>
+  <text x="505" y="40" text-anchor="middle" font-size="11" fill="#64748b">4 buckets — 3 non-empty</text>
+
+  <!-- 4 wide buckets: 56px wide, 10px gap, pitch 66px, starting x=375 -->
+  <!-- Bucket 0 (h=0-2): 3 nodes -->
+  <rect x="375" y="55" width="56" height="150" rx="2" fill="#dbeafe" stroke="#93c5fd" stroke-width="1"/>
+  <circle cx="403" cy="197" r="6" fill="#1d4ed8"/>
+  <circle cx="403" cy="183" r="6" fill="#1d4ed8"/>
+  <circle cx="403" cy="169" r="6" fill="#1d4ed8"/>
+  <text x="403" y="96"  text-anchor="middle" font-size="10" fill="#3b82f6">h = 0–2</text>
+
+  <!-- Bucket 1 (h=3-5): empty -->
+  <rect x="441" y="55" width="56" height="150" rx="2" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="469" y="96" text-anchor="middle" font-size="10" fill="#94a3b8">h = 3–5</text>
+
+  <!-- Bucket 2 (h=6-8): 3 nodes -->
+  <rect x="507" y="55" width="56" height="150" rx="2" fill="#dbeafe" stroke="#93c5fd" stroke-width="1"/>
+  <circle cx="535" cy="197" r="6" fill="#1d4ed8"/>
+  <circle cx="535" cy="183" r="6" fill="#1d4ed8"/>
+  <circle cx="535" cy="169" r="6" fill="#1d4ed8"/>
+  <text x="535" y="96" text-anchor="middle" font-size="10" fill="#3b82f6">h = 6–8</text>
+
+  <!-- Bucket 3 (h=9-11): 1 node -->
+  <rect x="573" y="55" width="56" height="150" rx="2" fill="#dbeafe" stroke="#93c5fd" stroke-width="1"/>
+  <circle cx="601" cy="197" r="6" fill="#1d4ed8"/>
+  <text x="601" y="96" text-anchor="middle" font-size="10" fill="#3b82f6">h = 9–11</text>
+
+  <!-- x-axis -->
+  <line x1="375" y1="208" x2="629" y2="208" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="375" y="221" text-anchor="middle" font-size="10" fill="#94a3b8">0</text>
+  <text x="601" y="221" text-anchor="middle" font-size="10" fill="#94a3b8">3</text>
+  <text x="502" y="221" text-anchor="middle" font-size="10" fill="#94a3b8">bucket index</text>
+
+  <text x="505" y="248" text-anchor="middle" font-size="12" font-weight="bold" fill="#16a34a">1 empty bucket</text>
+</svg>
