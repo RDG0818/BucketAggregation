@@ -1,0 +1,6 @@
+target_sources(${PROJECT_NAME}
+PUBLIC
+${CMAKE_CURRENT_SOURCE_DIR}/SharedBlockPool.h
+${CMAKE_CURRENT_SOURCE_DIR}/SharedDoublingPool.h
+${CMAKE_CURRENT_SOURCE_DIR}/BlockPool.h
+)

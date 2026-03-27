@@ -1,6 +1,7 @@
 // src/grid_environment.cpp
 
 #include "environments/environments.h"
+#include <random>
 
 GridEnvironment::GridEnvironment(uint32_t w, uint32_t h, uint32_t seed) : w_(w), h_(h), goal_id_(w_ * h_ - 1) {
     uint32_t total_states = w * h;

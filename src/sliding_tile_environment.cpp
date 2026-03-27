@@ -1,6 +1,8 @@
 // src/sliding_tile_environment.cpp
 
 #include "environments/environments.h"
+#include <fstream>
+#include <sstream>
 
 const int8_t SlidingTileEnvironment::MOVES[16][4] = {
     {1, 4, -1, -1},   {0, 2, 5, -1},    {1, 3, 6, -1},    {2, 7, -1, -1},   // 0-3
@@ -59,6 +61,8 @@ SlidingTileEnvironment::SlidingTileEnvironment(int instance_index, std::string f
 
   pool_.reserve(capacity_);
   node_states_.reserve(capacity_);
+  blank_pos_.reserve(capacity_);
+  h_costs_.reserve(capacity_);
   lookup_table_.reserve(capacity_);
 }
 
@@ -74,6 +78,12 @@ uint32_t SlidingTileEnvironment::get_or_create_id(T state) {
 
   uint32_t new_id = pool_.create_new_state_id();
   node_states_.push_back(state);
+  uint8_t blank = 0;
+  for (int i = 0; i < 16; i++) {
+    if (get_tile(state, i) == 0) { blank = i; break; }
+  }
+  blank_pos_.push_back(blank);
+  h_costs_.push_back(INF_COST);
   lookup_table_.insert({state, new_id});
   return new_id;
 }
@@ -82,29 +92,28 @@ void SlidingTileEnvironment::get_successors(uint32_t u_id, std::vector<uint32_t>
   neighbors.clear();
 
   const T parent_state = node_states_[u_id];
-  
-  int blank_idx = -1;
-  for (int i = 0; i < 16; i++) {
-    if (get_tile(parent_state, i) == 0) {
-      blank_idx = i;
-      break;
-    }
-  }
+  int blank_idx = blank_pos_[u_id];
+  uint32_t parent_h = get_heuristic(u_id);
 
   for (int i = 0; i < 4; i++) {
     int neighbor_idx = MOVES[blank_idx][i];
-
     if (neighbor_idx == -1) break;
 
-    uint64_t tile_val = get_tile(parent_state, neighbor_idx);
+    uint8_t tile_val = get_tile(parent_state, neighbor_idx);
+
+    // Only the moved tile's MD contribution changes.
+    int delta = (int)MD_TABLE[tile_val][blank_idx] - (int)MD_TABLE[tile_val][neighbor_idx];
+    uint32_t new_h = (uint32_t)((int)parent_h + delta);
+
+    uint64_t tile_val_64 = tile_val;
     int shift_blank = (15 - blank_idx) * 4;
     int shift_neighbor = (15 - neighbor_idx) * 4;
-
-    uint64_t swap_mask = (tile_val << shift_blank) | (tile_val << shift_neighbor);
-
+    uint64_t swap_mask = (tile_val_64 << shift_blank) | (tile_val_64 << shift_neighbor);
     T n_state = parent_state ^ swap_mask;
 
-    neighbors.push_back(get_or_create_id(n_state));
+    uint32_t v_id = get_or_create_id(n_state);
+    if (h_costs_[v_id] == INF_COST) h_costs_[v_id] = new_h;
+    neighbors.push_back(v_id);
   }
 }
 
@@ -162,6 +171,8 @@ HeavySlidingTileEnvironment::HeavySlidingTileEnvironment(int instance_index, std
   }
   pool_.reserve(capacity_);
   node_states_.reserve(capacity_);
+  blank_pos_.reserve(capacity_);
+  h_costs_.reserve(capacity_);
   lookup_table_.reserve(capacity_);
 }
 
@@ -176,6 +187,12 @@ uint32_t HeavySlidingTileEnvironment::get_or_create_id(T state) {
   }
   uint32_t new_id = pool_.create_new_state_id();
   node_states_.push_back(state);
+  uint8_t blank = 0;
+  for (int i = 0; i < 16; i++) {
+    if (get_tile(state, i) == 0) { blank = i; break; }
+  }
+  blank_pos_.push_back(blank);
+  h_costs_.push_back(INF_COST);
   lookup_table_.insert({state, new_id});
   return new_id;
 }
@@ -183,25 +200,28 @@ uint32_t HeavySlidingTileEnvironment::get_or_create_id(T state) {
 void HeavySlidingTileEnvironment::get_successors(uint32_t u_id, std::vector<uint32_t>& neighbors) {
   neighbors.clear();
   const T parent_state = node_states_[u_id];
-  
-  int blank_idx = -1;
-  for (int i = 0; i < 16; i++) {
-    if (get_tile(parent_state, i) == 0) {
-      blank_idx = i;
-      break;
-    }
-  }
+  int blank_idx = blank_pos_[u_id];
+  uint32_t parent_h = get_heuristic(u_id);
 
   for (int i = 0; i < 4; i++) {
     int neighbor_idx = MOVES[blank_idx][i];
     if (neighbor_idx == -1) break;
 
-    uint64_t tile_val = get_tile(parent_state, neighbor_idx);
+    uint8_t tile_val = get_tile(parent_state, neighbor_idx);
+
+    // Only the moved tile's contribution changes.
+    int md_delta = (int)MD_TABLE[tile_val][blank_idx] - (int)MD_TABLE[tile_val][neighbor_idx];
+    int delta = use_heavy_heuristic_ ? (int)tile_val * md_delta : md_delta;
+    uint32_t new_h = (uint32_t)((int)parent_h + delta);
+
+    uint64_t tile_val_64 = tile_val;
     int shift_blank = (15 - blank_idx) * 4;
     int shift_neighbor = (15 - neighbor_idx) * 4;
-    uint64_t swap_mask = (tile_val << shift_blank) | (tile_val << shift_neighbor);
-    
+    uint64_t swap_mask = (tile_val_64 << shift_blank) | (tile_val_64 << shift_neighbor);
     T n_state = parent_state ^ swap_mask;
-    neighbors.push_back(get_or_create_id(n_state));
+
+    uint32_t v_id = get_or_create_id(n_state);
+    if (h_costs_[v_id] == INF_COST) h_costs_[v_id] = new_h;
+    neighbors.push_back(v_id);
   }
 }

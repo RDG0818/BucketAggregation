@@ -262,30 +262,6 @@ gtest_main/fast:
 	$(MAKE) $(MAKESILENT) -f googletest/googletest/CMakeFiles/gtest_main.dir/build.make googletest/googletest/CMakeFiles/gtest_main.dir/build
 .PHONY : gtest_main/fast
 
-src/dimacs_environment.o: src/dimacs_environment.cpp.o
-.PHONY : src/dimacs_environment.o
-
-# target to build an object file
-src/dimacs_environment.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/dimacs_environment.cpp.o
-.PHONY : src/dimacs_environment.cpp.o
-
-src/dimacs_environment.i: src/dimacs_environment.cpp.i
-.PHONY : src/dimacs_environment.i
-
-# target to preprocess a source file
-src/dimacs_environment.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/dimacs_environment.cpp.i
-.PHONY : src/dimacs_environment.cpp.i
-
-src/dimacs_environment.s: src/dimacs_environment.cpp.s
-.PHONY : src/dimacs_environment.s
-
-# target to generate assembly for a file
-src/dimacs_environment.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/core_lib.dir/build.make CMakeFiles/core_lib.dir/src/dimacs_environment.cpp.s
-.PHONY : src/dimacs_environment.cpp.s
-
 src/grid_environment.o: src/grid_environment.cpp.o
 .PHONY : src/grid_environment.o
 
@@ -666,9 +642,6 @@ help:
 	@echo "... gtest_main"
 	@echo "... main"
 	@echo "... tests"
-	@echo "... src/dimacs_environment.o"
-	@echo "... src/dimacs_environment.i"
-	@echo "... src/dimacs_environment.s"
 	@echo "... src/grid_environment.o"
 	@echo "... src/grid_environment.i"
 	@echo "... src/grid_environment.s"

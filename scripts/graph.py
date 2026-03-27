@@ -17,7 +17,7 @@ def get_best_in_group(df, binary_pattern, alpha_1_pattern, opt_alpha_pattern):
     binary_data = binary_df.sort_values('total_overhead_ns').iloc[0] if not binary_df.empty else None
 
     # Alpha = 1
-    # Matches a=1 specifically or the base BucketHeap/LogBucketHeap
+    # Matches a=1 specifically or the base BucketHeap
     a1_df = df[df['algorithm_description'].str.contains(alpha_1_pattern, regex=True, na=False)]
     alpha_1_data = a1_df.sort_values('total_overhead_ns').iloc[0] if not a1_df.empty else None
 
