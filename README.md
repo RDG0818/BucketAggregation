@@ -8,8 +8,6 @@ Bucket-based priority queues are highly efficient open lists for heuristic searc
 
 This paper introduces bucket aggregation: grouping h-costs into intervals of width α so that node $n$ is placed in secondary bucket $\lfloor h(n)/\alpha \rfloor$ instead of bucket $h(n)$. A corresponding parameter $\beta$ aggregates primary (f-cost) buckets.
 
-> **Suggestion for diagram here:** A side-by-side illustration showing sparse h-buckets (α=1) vs. aggregated h-buckets (α>1) for the same node set, highlighting the reduction in empty buckets.
-
 ### Aggregation and Correctness
 
 For A\*, using the lower bound of each bucket interval as the $h$-representative preserves admissibility:
@@ -32,8 +30,6 @@ Hardware profiling of ANA* on Uniform Grid and 5-sequence MSA:
 | Uniform Grid | Aggregated α=100 | 47.22 | 8K | 40M | 0.49B
 | MSA-5 | Unaggregated | 60.60 | 1.24M | 1.13B | 142M
 | MSA-5 | Aggregated α=100 | 49.90 | 55K | 0.94B | 90M
-
----
 
 ## Build & Run
 
@@ -77,11 +73,9 @@ sudo sysctl kernel.perf_event_paranoid=1
 
 If a counter is unavailable its value is zero and it is omitted from the display. All eight counters (`perf_llc_misses`, `perf_llc_refs`, `perf_branch_misses`, `perf_branches`, `perf_cycles`, `perf_instructions`, `perf_faults_minor`, `perf_faults_major`) are always present as columns in CSV output.
 
----
+## Implementation
 
-## Architecture
-
-### Priority Queue Hierarchy
+### Priority Queue 
 
 All queues share a common interface (`push`, `pop`, `empty`, `clear`, `rebuild`) and are templated on environment and algorithm type.
 
@@ -92,8 +86,6 @@ All queues share a common interface (`push`, `pop`, `empty`, `clear`, `rebuild`)
 | `TwoLevelBucketQueue` | `two_level_bucket_queue.h` | Primary buckets by f, secondary by h; pool-allocated 512-byte blocks |
 | `IndexedDaryHeap` | `indexed_d_ary_heap.h` | D-ary heap with O(1) decrease-key via id→index map; O(n) rebuild |
 | `BucketHeap` | `bucket_heap.h` | **Hybrid:** `TwoLevelBucketQueue` stores nodes, `IndexedDaryHeap` tracks non-empty f-buckets |
-
-> **Suggestion for diagram here:** A structural diagram of `BucketHeap` showing the two-layer decomposition — the `IndexedDaryHeap` on top tracking f-bucket indices with computed priorities, feeding into the `TwoLevelBucketQueue` with its f→h→block chain.
 
 #### TwoLevelBucketQueue
 
@@ -126,8 +118,6 @@ Both queues accept `alpha` (secondary bucket width) and `beta` (primary bucket w
 
 The `use_h_max` flag on `BucketHeap` switches the h-representative from lower bound (safe for A*) to upper bound (needed for ANA*/DPS correctness under aggregation).
 
----
-
 ### Search Algorithms
 
 All algorithms are templated on `<Environment, Queue>`.
@@ -141,8 +131,6 @@ All algorithms are templated on `<Environment, Queue>`.
 
 ANA\* and DPS call `rebuild()` every time they find a new incumbent or detect that $f_{min}$ has increased. 
 
----
-
 ### Search Environments
 
 | Environment | States | Heuristic | Notes |
@@ -154,8 +142,6 @@ ANA\* and DPS call `rebuild()` every time they find a new incumbent or detect th
 | Pancake (standard) | $N=48$ permutations | Gap heuristic | Classic combinatorial; $N-1$ successors |
 | Pancake (heavy) | $N=48$ permutations | Weighted gap | Edge cost = max pancake flipped; amplifies sparsity |
 | MSA-5 / MSA-6 | Sequence alignment | Gap-based | Multiple sequence alignment; 5 or 6 sequences |
-
----
 
 ## License
 
