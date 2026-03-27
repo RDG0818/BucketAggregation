@@ -111,7 +111,7 @@ Pop is O(1) amortized: a lazy cursor advances past empty f-buckets; within each 
 
 #### BucketHeap
 
-Wraps `TwoLevelBucketQueue` with an `IndexedDaryHeap` that tracks which primary f-buckets are non-empty. The heap is keyed by f-bucket index with a priority dependent on algorithm-specific weighting (e.g., ANA*'s $E(n)$ or DPS's $U_D(n)$).
+Wraps `TwoLevelBucketQueue` with an `IndexedDaryHeap` that tracks which primary f-buckets are non-empty. The heap is keyed by f-bucket index with a priority dependent on the non-admissible algorithm-specific weighting (e.g., ANA*'s $E(n)$).
 
 `rebuild()` recomputes all heap priorities in O(n) without touching the bucket structure, making it highly efficient for algorithms that reorder the open list frequently.
 
@@ -138,7 +138,7 @@ All algorithms are templated on `<Environment, Queue>`.
 | ANA* | `ana_star.h` | $E(n) = (G_{upper} - g(n))\, /\, h(n)$ | Anytime; no fixed weight; auto-adjusts greediness |
 | DPS | `dps.h` | $U_D(n) = (\varepsilon \cdot f_{min} - g(n))\, /\, h(n)$ | Dynamic Potential Search; bounded suboptimal |
 
-**ANA\*** and **DPS** call `rebuild()` every time they find a new incumbent or detect that $f_{min}$ has increased. This is the primary motivation for `BucketHeap`'s O(n) rebuild — standard heaps make this O(n log n).
+**ANA\*** and **DPS** call `rebuild()` every time they find a new incumbent or detect that $f_{min}$ has increased. 
 
 ---
 
@@ -153,14 +153,6 @@ All algorithms are templated on `<Environment, Queue>`.
 | Pancake (standard) | $N=48$ permutations | Gap heuristic | Classic combinatorial; $N-1$ successors |
 | Pancake (heavy) | $N=48$ permutations | Weighted gap | Edge cost = max pancake flipped; amplifies sparsity |
 | MSA-5 / MSA-6 | Sequence alignment | Gap-based | Multiple sequence alignment; 5 or 6 sequences |
-
-<p align="center">
-<img src="./images/15_puzzle.png" width="28%" />
-&nbsp;&nbsp;&nbsp;&nbsp;
-<img src="./images/pancake.svg" width="38%" />
-</p>
-
-`phmap::flat_hash_map` from [parallel-hashmap](https://github.com/greg7mdp/parallel-hashmap) is used for state hashing on sliding tile and pancake.
 
 ---
 
