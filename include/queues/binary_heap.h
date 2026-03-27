@@ -1,4 +1,8 @@
 // include/queues/binary_heap.h
+//
+// STL-based binary min-heap (default: min by priority via std::greater).
+// Stores (priority, id, h) triples; ties on priority break in favor of smaller h.
+// Serves as the baseline comparison queue — no decrease-key, no bucketing.
 
 #pragma once
 

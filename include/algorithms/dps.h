@@ -11,16 +11,6 @@
 #include "utils/utils.h"
 #include "queues/bucket_heap.h"
 
-// Trait to detect bucket heaps (used to select the native rebuild/f_min path)
-template<typename T>
-struct is_bucket_heap_dps : std::false_type {};
-
-template<typename PC, typename C, int D>
-struct is_bucket_heap_dps<BucketHeap<PC, C, D>> : std::true_type {};
-
-template<typename Q>
-struct is_bucket_heap_dps<utils::ProfiledQueue<Q>> : is_bucket_heap_dps<Q> {};
-
 // Trait to detect native f_min support
 template<typename Q, typename = std::void_t<>>
 struct has_native_fmin : std::false_type {};
@@ -54,7 +44,10 @@ public:
     pool.set_g(start_node, 0);
 
     last_f_min_ = static_cast<double>(start_h);
-    update_calculator_params(last_f_min_);
+    if constexpr (is_bucket_heap<PQ>::value) {
+      priority_queue_.get_calculator().set_f_min(last_f_min_);
+      priority_queue_.get_calculator().set_epsilon(epsilon_);
+    }
 
     // Initialize manual tracker if needed
     if constexpr (!has_native_fmin<PQ>::value) {
@@ -62,7 +55,7 @@ public:
         f_tracker_.insert(start_h);
     }
 
-    if constexpr (is_bucket_heap_dps<PQ>::value) {
+    if constexpr (is_bucket_heap<PQ>::value) {
       priority_queue_.push(start_node, start_h, start_h);
     } else {
       priority_queue_.push(start_node, calculate_ud(0, start_h), start_h);
@@ -84,9 +77,9 @@ public:
       // 2. Trigger rebuild on f_min increase
       if (current_f_min > last_f_min_) {
           last_f_min_ = current_f_min;
-          update_calculator_params(last_f_min_);
-          
-          if constexpr (is_bucket_heap_dps<PQ>::value) {
+          if constexpr (is_bucket_heap<PQ>::value) {
+              priority_queue_.get_calculator().set_f_min(last_f_min_);
+              priority_queue_.get_calculator().set_epsilon(epsilon_);
               priority_queue_.rebuild();
           } else {
               auto calculator = [&](uint32_t id) -> double {
@@ -147,7 +140,7 @@ public:
           
           if (stats_) stats_->nodes_generated++;
                     
-          if constexpr (is_bucket_heap_dps<PQ>::value) {
+          if constexpr (is_bucket_heap<PQ>::value) {
             priority_queue_.push(v, new_g + v_h, v_h);
           } else {
             priority_queue_.push(v, calculate_ud(new_g, v_h), v_h);
@@ -158,13 +151,6 @@ public:
   }
 
 private:
-
-  void update_calculator_params(double f_min) {
-      if constexpr (is_bucket_heap_dps<PQ>::value) {
-          priority_queue_.get_calculator().set_f_min(f_min);
-          priority_queue_.get_calculator().set_epsilon(epsilon_);
-      }
-  }
 
   double calculate_ud(uint32_t g, uint32_t h) const {
     if (h == 0) return std::numeric_limits<double>::max();
@@ -179,6 +165,9 @@ private:
   bool collect_metrics_;
   double epsilon_;
   double last_f_min_;
+  // f_tracker_ mirrors open list f-values for non-BucketHeap queues.
+  // Invariant: contains exactly the f-values of all non-closed nodes in the queue.
+  // Updated on push (insert new_f), re-push (erase old_f, insert new_f), and pop (erase u_f).
   std::multiset<uint32_t> f_tracker_; // Only used if !has_native_fmin
   std::ofstream metrics_out_;
 

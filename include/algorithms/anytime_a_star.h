@@ -14,11 +14,10 @@ class AnytimeAStar {
 
 public:
 
-  AnytimeAStar(E& env, PQ& priority_queue, utils::SearchStats* stats = nullptr, bool collect_metrics = false, double weight = 2.0) 
-  : env_(env), 
+  AnytimeAStar(E& env, PQ& priority_queue, utils::SearchStats* stats = nullptr, bool /*collect_metrics*/ = false, double weight = 2.0)
+  : env_(env),
     priority_queue_(priority_queue),
     stats_(stats),
-    collect_metrics_(collect_metrics),
     weight_(weight) {};
 
   void solve() {
@@ -39,13 +38,12 @@ public:
     while (!priority_queue_.empty()) {
       uint32_t u = priority_queue_.pop();
 
+      uint32_t u_g = pool.get_g(u);
+      uint32_t u_h = env_.get_heuristic(u);
+
+      if (u_g + u_h >= incumbent_cost) continue;
+
       if (stats_) stats_->nodes_expanded++;
-
-      uint32_t u_g = pool.get_g(u); // check on staleness
-      uint32_t u_h = env_.get_heuristic(u); // Inlined computation
-      double u_f = u_g + u_h;
-
-      if (u_g + u_h >= incumbent_cost) continue; 
 
       if (env_.is_goal(u)) {
         if (u_g < incumbent_cost) {
@@ -62,8 +60,7 @@ public:
         uint32_t new_g = u_g + cost;
 
         uint32_t v_h = env_.get_heuristic(v);
-        double new_f = new_g + v_h;
-              
+
         if (new_g + v_h >= incumbent_cost) {
           continue;
         }
@@ -84,7 +81,6 @@ private:
   E& env_;
   PQ& priority_queue_;
   utils::SearchStats* stats_;
-  bool collect_metrics_;
   double weight_;
 
 };

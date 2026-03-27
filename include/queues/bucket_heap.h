@@ -23,9 +23,12 @@ public:
 
   BucketHeap(PriorityCalculator& calculator, uint32_t alpha = 1, uint32_t beta = 1, bool use_h_max = false)
     : calculator_(calculator), alpha_(alpha), beta_(beta), use_h_max_(use_h_max),
-      buckets_(alpha, beta) {};
+      buckets_(alpha, beta) {}
 
-  void set_use_h_max(bool val) { use_h_max_ = val; }
+  void set_use_h_max(bool val) {
+    assert(buckets_.empty() && "set_use_h_max called with nodes in the queue; existing priorities would be stale.");
+    use_h_max_ = val;
+  }
 
   void push(uint32_t id, uint32_t f, uint32_t h) {
     // The primary heap is keyed by bucket index, not raw f, so that nodes
@@ -125,3 +128,14 @@ private:
   uint32_t beta_;
   bool use_h_max_;
 };
+
+// Type trait for detecting BucketHeap (including ProfiledQueue wrappers).
+// Used by ANA* and DPS to select the native rebuild/f_min path.
+template<typename T>
+struct is_bucket_heap : std::false_type {};
+
+template<typename PC, typename C, int D>
+struct is_bucket_heap<BucketHeap<PC, C, D>> : std::true_type {};
+
+template<typename Q>
+struct is_bucket_heap<utils::ProfiledQueue<Q>> : is_bucket_heap<Q> {};

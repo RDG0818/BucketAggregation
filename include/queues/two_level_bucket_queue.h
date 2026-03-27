@@ -1,4 +1,18 @@
 // include/queues/two_level_bucket_queue.h
+//
+// Two-level bucket queue indexed by f-cost (primary) and h-cost (secondary).
+// Secondary buckets store node IDs in 512-byte blocks managed by a pool
+// allocator, avoiding per-node heap allocation.
+//
+// When alpha > 1 or beta > 1, secondary/primary buckets are aggregated: a node
+// with cost f is placed in primary bucket floor(f/beta), and a node with cost h
+// is placed in secondary bucket floor(h/alpha). This reduces bucket sparsity in
+// domains with large optimal f-cost and informative heuristics, at the expense
+// of some resolution in h-ordering. With alpha=beta=1 (the defaults), this
+// behaves as a standard two-level bucket queue.
+//
+// Used as the node-storage layer inside BucketHeap; BucketHeap manages
+// priorities externally via IndexedDaryHeap, so rebuild() is a no-op here.
 
 #pragma once
 
@@ -7,93 +21,79 @@
 #include <vector>
 #include <numeric>
 #include <cmath>
+#include <cassert>
 
 #include "environments/node.h"
 #include "utils/utils.h"
 
-struct Block {
-  static constexpr size_t SIZE = 126; // total size: 126 x 4 + 8 = 512 bytes
-  uint32_t elements[SIZE];
-  Block* next = nullptr;
-};
-
-class BlockPool {
-
-public:
-
-  BlockPool(size_t chunk_size = 1000, size_t initial_capacity = 0)
-  : chunk_size_(chunk_size) {
-    if (initial_capacity > 0) {
-      reserve(initial_capacity);
-    }
-  };
-
-  Block* allocate() {
-    if (!free_list_) {
-      allocate_chunk();
-    }
-    Block* block = free_list_;
-    free_list_ = free_list_->next;
-    block->next = nullptr;
-    return block;
-  }
-
-  void deallocate(Block* block) noexcept {
-    block->next = free_list_;
-    free_list_ = block;
-  }
-
-  void reserve(size_t n_blocks) {
-    while (capacity_ < n_blocks) {
-      allocate_chunk();
-    }
-  }
-
-  void clear() {
-    free_list_ = nullptr;
-    capacity_ = 0;
-    chunks_.clear();
-  }
-
-private:
-
-  void allocate_chunk() {
-    auto chunk = std::make_unique<Block[]>(chunk_size_);
-
-    for (size_t i = 0; i < chunk_size_ - 1; i++) {
-      chunk[i].next = &chunk[i + 1];
-    }
-    chunk[chunk_size_ - 1].next = free_list_;
-    free_list_ = &chunk[0];
-
-    chunks_.push_back(std::move(chunk));
-    capacity_ += chunk_size_;
-  }
-
-  size_t chunk_size_;
-  size_t capacity_ = 0;
-  Block* free_list_ = nullptr;
-  std::vector<std::unique_ptr<Block[]>> chunks_;
-
-};
-
-// Two-level bucket queue indexed by f-cost (primary) and h-cost (secondary).
-//
-// When alpha > 1 or beta > 1, secondary/primary buckets are aggregated: a node
-// with cost f is placed in primary bucket floor(f/beta), and a node with cost h
-// is placed in secondary bucket floor(h/alpha). This reduces bucket sparsity in
-// domains with large optimal f-cost and informative heuristics at the expense of
-// some resolution in h-ordering. With alpha=beta=1 (the defaults), the queue
-// behaves as a standard two-level bucket queue.
 class TwoLevelBucketQueue {
 
 private:
 
+  // 512-byte block for storing node IDs in a secondary bucket.
+  // Blocks are linked into a stack: push to head, pop from head.
+  struct Block {
+    static constexpr size_t SIZE = 126; // 126×4 + 8 = 512 bytes
+    uint32_t elements[SIZE];
+    Block* next = nullptr;
+  };
+
+  // Slab allocator for Block objects. Allocates in chunks to amortize
+  // system allocation cost; recycles freed blocks via a free list.
+  class BlockPool {
+  public:
+
+    BlockPool(size_t chunk_size = 1000, size_t initial_capacity = 0)
+    : chunk_size_(chunk_size) {
+      if (initial_capacity > 0) reserve(initial_capacity);
+    }
+
+    Block* allocate() {
+      if (!free_list_) allocate_chunk();
+      Block* block = free_list_;
+      free_list_ = free_list_->next;
+      block->next = nullptr;
+      return block;
+    }
+
+    void deallocate(Block* block) noexcept {
+      block->next = free_list_;
+      free_list_ = block;
+    }
+
+    void reserve(size_t n_blocks) {
+      while (capacity_ < n_blocks) allocate_chunk();
+    }
+
+    void clear() noexcept {
+      free_list_ = nullptr;
+      capacity_ = 0;
+      chunks_.clear();
+    }
+
+  private:
+
+    void allocate_chunk() {
+      auto chunk = std::make_unique<Block[]>(chunk_size_);
+      for (size_t i = 0; i < chunk_size_ - 1; i++) {
+        chunk[i].next = &chunk[i + 1];
+      }
+      chunk[chunk_size_ - 1].next = free_list_;
+      free_list_ = &chunk[0];
+      chunks_.push_back(std::move(chunk));
+      capacity_ += chunk_size_;
+    }
+
+    size_t chunk_size_;
+    size_t capacity_ = 0;
+    Block* free_list_ = nullptr;
+    std::vector<std::unique_ptr<Block[]>> chunks_;
+  };
+
   struct SecondaryBucket {
     Block* head = nullptr;
     uint32_t top = 0;
-
-    bool empty() const {return head == nullptr; };
+    bool empty() const noexcept { return head == nullptr; }
   };
 
   struct PrimaryBucket {
@@ -119,7 +119,10 @@ public:
       f_min_idx_ = 0;
     }
 
-    if (f_b < f_offset_) {
+    if (f_b < f_offset_) [[unlikely]] {
+      // Prepend empty primary buckets to accommodate the lower f-cost.
+      // Should not occur for A*-family algorithms where f is non-decreasing on
+      // the open list; this path is O(buckets) due to the front insert.
       uint32_t delta = f_offset_ - f_b;
       f_buckets_.insert(f_buckets_.begin(), delta, PrimaryBucket{});
       f_offset_ = f_b;
@@ -128,7 +131,7 @@ public:
 
     uint32_t f_idx = f_b - f_offset_;
     if (f_idx >= f_buckets_.size()) {
-      size_t new_size = std::max<size_t>(f_idx + 1, f_buckets_.size() * 1.5);
+      size_t new_size = std::max<size_t>(f_idx + 1, f_buckets_.size() + f_buckets_.size() / 2);
       f_buckets_.resize(new_size);
     }
 
@@ -138,7 +141,7 @@ public:
       if (p_bucket.h_buckets.capacity() == 0) {
         secondary_bucket_allocs_++;
       }
-      size_t new_size = std::max<size_t>(h_b + 1, p_bucket.h_buckets.size() * 1.5);
+      size_t new_size = std::max<size_t>(h_b + 1, p_bucket.h_buckets.size() + p_bucket.h_buckets.size() / 2);
       p_bucket.h_buckets.resize(new_size);
     }
 
@@ -161,17 +164,15 @@ public:
   }
 
   uint32_t pop() noexcept {
-    if (count_ == 0) return INF_COST;
+    if (count_ == 0) return NODE_NULL;
 
-    if (f_min_idx_ < f_buckets_.size() && f_buckets_[f_min_idx_].count == 0) {
-      while (f_min_idx_ < f_buckets_.size() && f_buckets_[f_min_idx_].count == 0) {
-        f_min_idx_++;
-      }
+    while (f_min_idx_ < f_buckets_.size() && f_buckets_[f_min_idx_].count == 0) {
+      f_min_idx_++;
     }
 
     if (f_min_idx_ >= f_buckets_.size()) {
       count_ = 0;
-      return INF_COST;
+      return NODE_NULL;
     }
 
     return pop_from_bucket(f_buckets_[f_min_idx_]);
@@ -185,7 +186,6 @@ public:
     if (f_idx >= f_buckets_.size() || f_buckets_[f_idx].count == 0) {
       return NODE_NULL;
     }
-
     return pop_from_bucket(f_buckets_[f_idx]);
   }
 
@@ -207,33 +207,11 @@ public:
     return f_buckets_[f_idx].h_min;
   }
 
-  uint32_t peek_top_node(uint32_t f, uint32_t h) const noexcept {
-    uint32_t f_b = f / beta_;
-    uint32_t h_b = h / alpha_;
-    if (f_b < f_offset_) return NODE_NULL;
-    uint32_t f_idx = f_b - f_offset_;
-    if (f_idx >= f_buckets_.size() || h_b >= f_buckets_[f_idx].h_buckets.size()) {
-      return NODE_NULL;
-    }
-
-    const auto& s_bucket = f_buckets_[f_idx].h_buckets[h_b];
-    if (s_bucket.empty()) return NODE_NULL;
-
-    return s_bucket.head->elements[s_bucket.top - 1];
-  }
-
-  void set_f_min(uint32_t f) noexcept {
-    uint32_t f_b = f / beta_;
-    if (f_b < f_offset_) f_min_idx_ = 0;
-    else f_min_idx_ = f_b - f_offset_;
-  }
-
   // Returns the minimum non-empty primary bucket index (= raw f_min / beta).
+  // f_min_idx_ is mutable so this lazy cursor-advance can be const.
   uint32_t get_f_min() const noexcept {
-    if (f_min_idx_ < f_buckets_.size() && f_buckets_[f_min_idx_].count == 0) {
-      while (f_min_idx_ < f_buckets_.size() && f_buckets_[f_min_idx_].count == 0) {
-        f_min_idx_++;
-      }
+    while (f_min_idx_ < f_buckets_.size() && f_buckets_[f_min_idx_].count == 0) {
+      f_min_idx_++;
     }
     if (f_min_idx_ >= f_buckets_.size()) return f_offset_ + f_buckets_.size();
     return f_offset_ + f_min_idx_;
@@ -248,7 +226,7 @@ public:
   uint64_t get_hmin_scans() const noexcept { return hmin_scans_; }
   uint64_t get_secondary_bucket_allocs() const noexcept { return secondary_bucket_allocs_; }
 
-  bool empty() const noexcept { return count_ == 0; };
+  bool empty() const noexcept { return count_ == 0; }
 
   void clear() noexcept {
     f_buckets_.clear();
@@ -332,10 +310,7 @@ public:
     }
 
     auto calculate_stats = [](const auto& v, double& mean, double& stddev) {
-      if (v.empty()) {
-        mean = 0; stddev = 0;
-        return;
-      }
+      if (v.empty()) { mean = 0; stddev = 0; return; }
       double sum = std::accumulate(v.begin(), v.end(), 0.0);
       mean = sum / v.size();
       double sq_sum = std::inner_product(v.begin(), v.end(), v.begin(), 0.0);
@@ -355,18 +330,21 @@ public:
     return get_detailed_metrics(is_stale_stub);
   }
 
-  template <typename T> void rebuild(T) {}
+  // Priorities are managed externally by BucketHeap via IndexedDaryHeap.
+  // Calling rebuild on TwoLevelBucketQueue directly is a bug.
+  template <typename T>
+  void rebuild(T) {
+    assert(false && "TwoLevelBucketQueue::rebuild called — priorities are managed by BucketHeap.");
+  }
 
 private:
 
   uint32_t pop_from_bucket(PrimaryBucket& p_bucket) noexcept {
-    if (p_bucket.h_min < p_bucket.h_buckets.size() &&
-          p_bucket.h_buckets[p_bucket.h_min].empty()) {
-      while(p_bucket.h_min < p_bucket.h_buckets.size() &&
-            p_bucket.h_buckets[p_bucket.h_min].empty()) {
-        p_bucket.h_min++;
-        hmin_scans_++;
-      }
+    // Advance h_min cursor past any empty secondary buckets.
+    while (p_bucket.h_min < p_bucket.h_buckets.size() &&
+           p_bucket.h_buckets[p_bucket.h_min].empty()) {
+      p_bucket.h_min++;
+      hmin_scans_++;
     }
 
     if (p_bucket.h_min >= p_bucket.h_buckets.size()) {
@@ -380,20 +358,19 @@ private:
       Block* old_head = s_bucket.head;
       s_bucket.head = s_bucket.head->next;
       pool_.deallocate(old_head);
-
       if (s_bucket.head) s_bucket.top = Block::SIZE;
     }
 
     p_bucket.count--;
     count_--;
 
+    // If the current secondary bucket is now empty, advance h_min so the
+    // next get_h_min() call returns an up-to-date value without scanning.
     if (p_bucket.count > 0 && s_bucket.empty()) {
-      if (p_bucket.h_min < p_bucket.h_buckets.size() &&
+      while (p_bucket.h_min < p_bucket.h_buckets.size() &&
              p_bucket.h_buckets[p_bucket.h_min].empty()) {
-        while (p_bucket.h_min < p_bucket.h_buckets.size() &&
-               p_bucket.h_buckets[p_bucket.h_min].empty()) {
-          p_bucket.h_min++;
-        };
+        p_bucket.h_min++;
+        hmin_scans_++;
       }
     }
 
@@ -402,7 +379,7 @@ private:
 
   std::vector<PrimaryBucket> f_buckets_;
   uint32_t f_offset_;
-  mutable uint32_t f_min_idx_;
+  mutable uint32_t f_min_idx_; // mutable: lazily advanced by get_f_min() and pop()
   size_t count_;
   uint64_t hmin_scans_ = 0;
   uint64_t secondary_bucket_allocs_ = 0;
