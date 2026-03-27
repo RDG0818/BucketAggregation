@@ -576,21 +576,21 @@ void execute_benchmarks(
                 default: std::cerr << "Unsupported D value for BucketHeap: " << d << "\n";
             }
 
-        } else if (algo == "anastar_realbucket") {
+        } else if (algo == "anastar_agg_bucket") {
             ANAStarPriorityCalculator calc;
             std::string desc = "ANA* with BucketHeap (a=" + std::to_string(alpha) + ", b=" + std::to_string(beta)
                              + ", D=" + std::to_string(d) + (cfg.use_h_max ? ", use_h_max" : "") + ")";
             auto run = [&](auto& h) { h.set_use_h_max(cfg.use_h_max); emit(run_benchmark<ANAStar>(env, h, desc, spinner, cfg.collect_metrics)); };
             dispatch_d(d, calc, alpha, beta, run);
 
-        } else if (algo == "dps_realbucket") {
+        } else if (algo == "dps_agg_bucket") {
             DPSPriorityCalculator calc;
             std::string desc = "DPS with BucketHeap (a=" + std::to_string(alpha) + ", b=" + std::to_string(beta)
                              + ", D=" + std::to_string(d) + (cfg.use_h_max ? ", use_h_max" : "") + ")";
             auto run = [&](auto& h) { h.set_use_h_max(cfg.use_h_max); emit(run_benchmark<DynamicPotentialSearch>(env, h, desc, spinner, cfg.collect_metrics, cfg.focal_w)); };
             dispatch_d(d, calc, alpha, beta, run);
 
-        } else if (algo == "astar_agg_two_level") {
+        } else if (algo == "astar_two_level") {
             TwoLevelBucketQueue queue(alpha, beta);
             std::string desc = "A* with TwoLevelBucketQueue (a=" + std::to_string(alpha) + ", b=" + std::to_string(beta) + ")";
             emit(run_benchmark<AStar>(env, queue, desc, spinner, cfg.collect_metrics));
@@ -637,7 +637,7 @@ int main(int argc, char** argv) {
         ("grid-width",          "Grid width",                                  cxxopts::value<int>()->default_value("1000"))
         ("grid-height",         "Grid height",                                 cxxopts::value<int>()->default_value("1000"))
         ("grid-max-edge-cost",  "Grid max edge cost",                          cxxopts::value<uint32_t>()->default_value("1"))
-        ("k,korf",              "Korf100 puzzle range (e.g. 0-9 or 5)",        cxxopts::value<std::string>()->default_value("0"))
+        ("k,puzzle",            "Sliding tile puzzle range (e.g. 0-9 or 5)",   cxxopts::value<std::string>()->default_value("0"))
         ("o,output",            "Output CSV file",                             cxxopts::value<std::string>())
         ("metrics",             "Collect detailed bucket metrics",             cxxopts::value<bool>()->default_value("false"))
         ("num-grid",            "Number of grid instances",                    cxxopts::value<int>()->default_value("1"))
@@ -648,9 +648,9 @@ int main(int argc, char** argv) {
         ("pancake-alphas",      "CSV of Pancake alpha values",                 cxxopts::value<std::string>()->default_value("1"))
         ("pancake-betas",       "CSV of Pancake beta values",                  cxxopts::value<std::string>()->default_value("2"))
         ("pancake-ds",          "CSV of Pancake D values",                     cxxopts::value<std::string>()->default_value("2"))
-        ("korf-alphas",         "CSV of Korf alpha values",                    cxxopts::value<std::string>()->default_value("1"))
-        ("korf-betas",          "CSV of Korf beta values",                     cxxopts::value<std::string>()->default_value("10"))
-        ("korf-ds",             "CSV of Korf D values",                        cxxopts::value<std::string>()->default_value("2"))
+        ("sliding-tile-alphas",  "CSV of Sliding tile alpha values",            cxxopts::value<std::string>()->default_value("1"))
+        ("sliding-tile-betas",  "CSV of Sliding tile beta values",             cxxopts::value<std::string>()->default_value("10"))
+        ("sliding-tile-ds",     "CSV of Sliding tile D values",                cxxopts::value<std::string>()->default_value("2"))
         ("msa-alphas",          "CSV of MSA alpha values",                     cxxopts::value<std::string>()->default_value("1"))
         ("msa-betas",           "CSV of MSA beta values",                      cxxopts::value<std::string>()->default_value("1"))
         ("msa-ds",              "CSV of MSA D values",                         cxxopts::value<std::string>()->default_value("2"))
@@ -660,11 +660,11 @@ int main(int argc, char** argv) {
         ("focal-w",             "Suboptimality bound for focal/anytime search", cxxopts::value<double>()->default_value("1.5"))
         ("use-h-max",           "Use h-max as bucket representative",          cxxopts::value<bool>()->default_value("false"))
         ("e,environments",      "Comma-separated environments to run",
-            cxxopts::value<std::string>()->default_value("grid,pancake,korf100"))
+            cxxopts::value<std::string>()->default_value("grid,pancake,sliding_tile"))
         ("l,algorithms",        "Comma-separated algorithms to run",
             cxxopts::value<std::string>()->default_value(
                 "astar_binary,astar_bucket,anytime_astar_binary,anastar_binary,"
-                "anastar_bucket,anastar_realbucket,astar_agg_two_level"))
+                "anastar_bucket,anastar_agg_bucket,astar_two_level"))
         ("h,help", "Print usage");
 
     auto args = options.parse(argc, argv);
@@ -704,15 +704,15 @@ int main(int argc, char** argv) {
     std::string algo_str = args["algorithms"].as<std::string>();
     if (algo_str == "all") {
         all_algos = {"astar_binary", "astar_bucket", "anytime_astar_binary", "anastar_binary",
-                     "anastar_bucket", "anastar_realbucket", "astar_agg_two_level",
-                     "dps_binary", "dps_bucket", "dps_realbucket"};
+                     "anastar_bucket", "anastar_agg_bucket", "astar_two_level",
+                     "dps_binary", "dps_bucket", "dps_agg_bucket"};
     } else {
         all_algos = parse_list<std::string>(algo_str);
     }
 
     AlgoGroups groups;
     for (const auto& algo : all_algos) {
-        if (algo == "anastar_realbucket" || algo == "astar_agg_two_level" || algo == "dps_realbucket")
+        if (algo == "anastar_agg_bucket" || algo == "astar_two_level" || algo == "dps_agg_bucket")
             groups.full_sweep.push_back(algo);
         else if (algo == "anastar_bucket" || algo == "dps_bucket")
             groups.d_sweep.push_back(algo);
@@ -728,10 +728,10 @@ int main(int argc, char** argv) {
             parse_list<int>     (args[prefix + "-ds"].as<std::string>())
         };
     };
-    SweepParams grid_params    = make_params("grid");
-    SweepParams pancake_params = make_params("pancake");
-    SweepParams korf_params    = make_params("korf");
-    SweepParams msa_params     = make_params("msa");
+    SweepParams grid_params         = make_params("grid");
+    SweepParams pancake_params      = make_params("pancake");
+    SweepParams sliding_tile_params = make_params("sliding-tile");
+    SweepParams msa_params          = make_params("msa");
 
     // ── Terminal output helpers ──────────────────────────────────────────────
     auto env_header = [&](const std::string& title, const std::string& sub = "") {
@@ -796,29 +796,29 @@ int main(int argc, char** argv) {
                 instance_footer();
             }
 
-        } else if (env_name == "korf100") {
+        } else if (env_name == "sliding_tile") {
             env_header("Sliding Tile Puzzle", "Korf100");
-            for (int idx : parse_range(args["korf"].as<std::string>())) {
+            for (int idx : parse_range(args["puzzle"].as<std::string>())) {
                 instance_header("Puzzle #" + std::to_string(idx));
                 try {
                     SlidingTileEnvironment env(idx, "korf100.txt", capacity);
-                    run_sweep(env, groups, korf_params, cfg, env_name, idx);
+                    run_sweep(env, groups, sliding_tile_params, cfg, env_name, idx);
                 } catch (const std::exception& e) {
-                    std::cerr << "korf100 puzzle #" << idx << ": " << e.what() << "\n";
+                    std::cerr << "sliding_tile puzzle #" << idx << ": " << e.what() << "\n";
                 }
                 instance_footer();
             }
 
-        } else if (env_name == "heavy_korf100") {
+        } else if (env_name == "heavy_sliding_tile") {
             env_header("Heavy Sliding Tile Puzzle", "Korf100");
-            for (int idx : parse_range(args["korf"].as<std::string>())) {
+            for (int idx : parse_range(args["puzzle"].as<std::string>())) {
                 instance_header("Puzzle #" + std::to_string(idx));
                 try {
                     HeavySlidingTileEnvironment env(idx, "korf100.txt", capacity);
                     env.set_heavy_heuristic(heavy_heuristic);
-                    run_sweep(env, groups, korf_params, cfg, env_name, idx);
+                    run_sweep(env, groups, sliding_tile_params, cfg, env_name, idx);
                 } catch (const std::exception& e) {
-                    std::cerr << "heavy_korf100 puzzle #" << idx << ": " << e.what() << "\n";
+                    std::cerr << "heavy_sliding_tile puzzle #" << idx << ": " << e.what() << "\n";
                 }
                 instance_footer();
             }

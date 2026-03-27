@@ -164,22 +164,6 @@ All algorithms are templated on `<Environment, Queue>`.
 
 ---
 
-### Node Management
-
-`NodePool` (`include/environments/node.h`) manages all per-node state for a search. It uses **per-search iteration counters** rather than clearing arrays between runs — `is_generated()` and `is_closed()` compare against the current iteration ID, making `reset_search()` O(1) regardless of pool size.
-
----
-
-## Implementation Notes
-
-- **`noexcept`** is applied throughout non-allocating methods. This is critical for `std::vector` to use move semantics during reallocation rather than copies.
-- **Floyd's O(n) heapify** is used in `IndexedDaryHeap::rebuild()` (bottom-up, starting from the last internal node).
-- **`[[unlikely]]`** annotates the `f_b < f_offset_` front-insert path in `TwoLevelBucketQueue`, which should never trigger for A*-family algorithms where f is non-decreasing.
-- **`is_bucket_heap<T>` trait** detects `BucketHeap` (and `ProfiledQueue<BucketHeap>`) at compile time, allowing ANA* and DPS to select the native O(n) rebuild path vs. a generic fallback.
-- **`ProfiledQueue<Q>`** wraps any queue with timing instrumentation (enqueue, dequeue, rebuild, decrease-key latencies) without affecting the queue's logic.
-
----
-
 ## License
 
 MIT License — see `License.md`.
