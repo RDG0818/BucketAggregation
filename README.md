@@ -24,13 +24,14 @@ preserves the relative ordering of the priority function, preventing the queue f
 
 ### Key Results
 
-Aggregation delivers substantial cache efficiency gains on sparse-h domains:
+Hardware profiling of ANA* on Uniform Grid and 5-sequence MSA:
 
-| Domain | Metric | Baseline | α=16 |
-|---|---|---|---|
-| Non-uniform grid | Page faults | 234K | 8K |
-| Non-uniform grid | LLC misses | 109M | 40M |
-| Heavy sliding tile | LLC misses | — | ~3× reduction |
+| Domain | Queue | Time (s) | Page Faults | LLC Misses | Branch Misses
+|---|---|---|---|---|---|
+| Uniform Grid | Unaggregated | 97.02 | 234K | 109M | 1.62B
+| Uniform Grid | Aggregated α=100 | 47.22 | 8K | 40M | 0.49B
+| MSA-5 | Unaggregated | 60.60 | 1.24M | 1.13B | 142M
+| MSA-5 | Aggregated α=100 | 49.90 | 55K | 0.94B | 90M
 
 ---
 
