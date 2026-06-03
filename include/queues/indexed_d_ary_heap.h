@@ -124,10 +124,20 @@ private:
     return a.h < b.h; // Tie-break: prefer smaller h
   }
 
+  // Used in sift_up only. Swapping on equal priority gives LIFO tie-breaking:
+  // newly pushed nodes rise above older nodes of equal priority, matching the
+  // stack-based ordering of BucketHeap's secondary buckets.
+  bool is_better_or_equal(const HeapItem& a, const HeapItem& b) const noexcept {
+    if (a.priority != b.priority) {
+      return Compare()(b.priority, a.priority);
+    }
+    return a.h <= b.h;
+  }
+
   void sift_up(int index) noexcept {
     while (index > 0) {
       int parent = (index - 1) / D;
-      if (is_better(heap_[index], heap_[parent])) {
+      if (is_better_or_equal(heap_[index], heap_[parent])) {
         swap_nodes(index, parent);
         index = parent;
       } else {
